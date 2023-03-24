@@ -1,2 +1,27 @@
+# Build artifacts
 
-build/
+CMakeFiles/
+CMakeCache.txt
+Makefile
+
+# Compiled binaries
+*.exe
+*.dll
+*.so
+
+# IDE and editor files
+*.pro.user
+*.autosave
+*.swp
+*.swo
+*.swn
+*.kdev4
+*.kate-swp
+*.DS_Store
+
+# Qt-specific files
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+
+
