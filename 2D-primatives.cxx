@@ -19,6 +19,12 @@
 #include <vtkTextProperty.h>
 #include <vtkTextRepresentation.h>
 #include <vtkTextWidget.h>
+#include <vtkParametricEllipsoid.h>
+#include <vtkParametricFunctionSource.h>
+#include <vtkRegularPolygonSource.h>
+#include <vtkSuperquadricSource.h>
+
+
 
 #include <QApplication>
 #include <QDockWidget>
@@ -170,18 +176,48 @@ namespace {
         TextActor->Modified();
         //writeInFile(linesource,lineActor);
     }
-    void setFirstCoordinate(vtkLineSource* linesource, vtkGenericOpenGLRenderWindow* window, vtkTextActor* TextActor, vtkActor* lineActor) {
-        double x1 = QInputDialog::getDouble(NULL, "Enter first coordinates", "x1 coordinate", 0, -1000, 1000, 2);
-        double y1 = QInputDialog::getDouble(NULL, "Enter first coordinates", "y1 coordinate", 0, -1000, 1000, 2);
-        linesource->SetPoint1(x1, y1, 0.0);
-        updateTextCoordinates(linesource, TextActor, lineActor);
+    void addEllipse(vtkSuperquadricSource* source, vtkActor* actor,vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
+        double width = QInputDialog::getDouble(NULL, "Enter ellipse scaling factors", "width", 0, -1000, 2, 2);
+        double depth = QInputDialog::getDouble(NULL, "Enter ellipse scaling factors", "depth", 0, -1000, 2, 2);
+        double thickness = QInputDialog::getDouble(NULL, "Enter ellipse scaling factors", "thickness", 0, -1000, 2, 2);
+        double centerx = QInputDialog::getDouble(NULL, "Enter ellipse center", "center x", 0, -1000, 2, 2);
+        double centery = QInputDialog::getDouble(NULL, "Enter ellipse center", "center y", 0, -1000, 2, 2);
+        double centerz = QInputDialog::getDouble(NULL, "Enter ellipse center", "center z", 0, -1000, 2, 2);
+        
+        //vtkNew<vtkSuperquadricSource> source;
+        source->SetPhiRoundness(1);
+        source->SetThetaRoundness(0.8);
+        source->SetScale(width, depth, thickness);
+        source->Update();
+
+        //vtkNew<vtkPolyDataMapper> mapper;
+        //mapper->SetInputData(source->GetOutput());
+
+        //vtkNew<vtkActor> actor;
+        //actor->SetMapper(mapper);
+        actor->GetProperty()->SetColor(1.0, 0.0, 0.0);
+        actor->SetPosition(centerx, centery, centerz);
+        renderer->AddActor(actor);
         window->Render();
+
     }
-    void setSecondCoordinate(vtkLineSource* linesource, vtkGenericOpenGLRenderWindow* window, vtkTextActor* TextActor, vtkActor* lineActor) {
-        double x2 = QInputDialog::getDouble(NULL, "Enter second coordinates", "x2 coordinate", 0, -1000, 1000, 2);
-        double y2 = QInputDialog::getDouble(NULL, "Enter second coordinates", "y2 coordinate", 0, -1000, 1000, 2);
-        linesource->SetPoint2(x2, y2, 0.0);
-        updateTextCoordinates(linesource, TextActor, lineActor);
+    void addRegularPolygon(vtkRegularPolygonSource* polygonSource, vtkActor* polyactor,vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
+        int numsides = QInputDialog::getInt(NULL, "Enter regular polygon info", "number of sides", 0, 0, 10, 2);
+        double centerx = QInputDialog::getDouble(NULL, "Enter regular polygon center", "center x", 0, -1000, 1000, 2);
+        double centery = QInputDialog::getDouble(NULL, "Enter regular polygon center", "center y", 0, -1000, 1000, 2);
+        double centerz = QInputDialog::getDouble(NULL, "Enter regular polygon center", "center z", 0, -1000, 1000, 2);
+        double radius= QInputDialog::getDouble(NULL, "Enter regular polygon radius", "radius", 0, -1000, 1000, 2);
+        //vtkNew<vtkRegularPolygonSource> polygonSource;
+        polygonSource->SetNumberOfSides(numsides);
+        double center[3] = { centerx, centery,centerz };
+        polygonSource->SetCenter(center);
+        polygonSource->SetRadius(radius);          // Horizontal radius
+        /*vtkNew<vtkPolyDataMapper> polymapper;
+        polymapper->SetInputConnection(polygonSource->GetOutputPort());
+        vtkNew <vtkActor> polyactor;
+        polyactor->SetMapper(polymapper);*/
+        polyactor->GetProperty()->SetColor(1.0, 0.0, 0.0);
+        renderer->AddActor(polyactor);
         window->Render();
     }
 
@@ -261,11 +297,15 @@ int main(int argc, char** argv)
     layoutContainer.setLayout(dockLayout);
     controlDock.setWidget(&layoutContainer);
 
-    QPushButton setFirstCoordinate;
-    setFirstCoordinate.setText("Set First Coordinate");
-    dockLayout->addWidget(&setFirstCoordinate, 0, Qt::AlignTop);
+    QPushButton addEllipse;
+    addEllipse.setText("Add Ellipse");
+    dockLayout->addWidget(&addEllipse, 0, Qt::AlignTop);
 
-    QPushButton setSecondCoordinate;
+    QPushButton addRegularPolygon;
+    addRegularPolygon.setText("Add Regular Polygon");
+    dockLayout->addWidget(&addRegularPolygon, 0, Qt::AlignTop);
+
+    /*QPushButton setSecondCoordinate;
     setSecondCoordinate.setText("Set Second Coordinate");
     dockLayout->addWidget(&setSecondCoordinate, 1, Qt::AlignTop);
 
@@ -275,7 +315,7 @@ int main(int argc, char** argv)
 
     QPushButton writeFile;
     writeFile.setText("Write Input File");
-    dockLayout->addWidget(&writeFile, 1, Qt::AlignTop);
+    dockLayout->addWidget(&writeFile, 1, Qt::AlignTop);*/
 
      //render area
     QPointer<QVTKOpenGLNativeWidget> vtkRenderWidget = new QVTKOpenGLNativeWidget();
@@ -286,66 +326,49 @@ int main(int argc, char** argv)
     vtkNew<vtkGenericOpenGLRenderWindow> window;
     vtkRenderWidget->setRenderWindow(window);
 
-    vtkNew<vtkLineSource> linesource;
+    /*vtkNew<vtkLineSource> linesource;
     vtkNew<vtkPolyDataMapper> linemapper;
     linemapper->SetInputConnection(linesource->GetOutputPort());
-
     vtkNew<vtkActor> lineactor;
-    lineactor->SetMapper(linemapper);
+    lineactor->SetMapper(linemapper);*/
+    vtkNew<vtkSuperquadricSource> ellipsesource;
+    vtkNew<vtkPolyDataMapper> ellipsemapper;
+    ellipsemapper->SetInputData(ellipsesource->GetOutput());
+    vtkNew<vtkActor> ellipseactor;
+    ellipseactor->SetMapper(ellipsemapper);
 
-    //vtkNew<vtkRenderWindow> renderWindow;
+    vtkNew<vtkRegularPolygonSource> polygonSource;
+    vtkNew<vtkPolyDataMapper> polymapper;
+    polymapper->SetInputConnection(polygonSource->GetOutputPort());
+    vtkNew <vtkActor> polyactor;
+    polyactor->SetMapper(polymapper);
+
     vtkNew<vtkRenderer> renderer;
-    renderer->AddActor(lineactor);
+    //renderer->AddActor(lineactor);
     window->AddRenderer(renderer);
-    //renderWindow->AddRenderer(renderer);
 
-    //vtkNew<vtkRenderWindowInteractor> renderWindowInteractor;
     vtkNew<vtkPointPicker> pointPicker;
     window->SetInteractor(vtkRenderWidget->interactor());
     window->GetInteractor()->SetPicker(pointPicker);
+
+    //vtkNew<vtkRenderWindowInteractor> renderWindowInteractor;
+    //vtkNew<vtkPointPicker> pointPicker;
+    window->SetInteractor(vtkRenderWidget->interactor());
+    //window->GetInteractor()->SetPicker(pointPicker);
     //renderWindowInteractor->SetPicker(pointPicker);
-    //renderWindowInteractor->SetRenderWindow(window);
-    //renderWindowInteractor->SetRenderWindow(renderWindow);
     //interactor->SetInteractorStyle(style);
 
     /*vtkNew<customMouseInteractorStyle> style;
     style->setLineSource(linesource);
     style->setVTKActor(lineactor);
     window->GetInteractor()->SetInteractorStyle(style);*/
-    //window->GetInteractor()->Start();
-
-    vtkNew<vtkTextActor> textActor;
-    textActor->SetInput("Line coordinates: (0, 0) - (0, 0)");
-    textActor->GetTextProperty()->SetColor(1.0, 0.0, 0.0);
-    textActor->GetTextProperty()->SetFontSize(40);
-    //style->setTextActor(textActor);
-    renderer->AddActor(textActor);
-
-    vtkNew<vtkTextRepresentation> textRepresentation;
-    textRepresentation->GetPositionCoordinate()->SetValue(0.15, 0.15);
-    textRepresentation->GetPosition2Coordinate()->SetValue(0.7, 0.2);
-    
-    vtkNew<vtkTextWidget> textWidget;
-    textWidget->SetRepresentation(textRepresentation);
-    textWidget->SelectableOff();
-    textWidget->SetInteractor(vtkRenderWidget->interactor());
-
-    //renderWindowInteractor->SetInteractorStyle(style);
-    //window->SetInteractor(renderWindowInteractor);
-    //window->Render();
-    //renderWindow->AddRenderer(renderer);
-    //renderWindowInteractor->Initialize();
-    //renderWindowInteractor->Start();
-    //// setup initial status
-    //std::mt19937 randEng(0);
-    //::Randomize(sphere, mapper, window, randEng);
 
     //// connect the buttons
-    QObject::connect(&setFirstCoordinate, &QPushButton::released,
-        [&]() { ::setFirstCoordinate(linesource,window,textActor,lineactor); });
+    QObject::connect(&addEllipse, &QPushButton::released,
+        [&]() { ::addEllipse(ellipsesource, ellipseactor,window,renderer); });
 
-    QObject::connect(&setSecondCoordinate, &QPushButton::released,
-        [&]() { ::setSecondCoordinate(linesource,window,textActor, lineactor); });
+    QObject::connect(&addRegularPolygon, &QPushButton::released,
+        [&]() { ::addRegularPolygon(polygonSource, polyactor,window,renderer); });
 
    /* QObject::connect(&readFile, &QPushButton::released,
         [&]() { ::readInputFile(linesource, window, textActor, lineactor); });
