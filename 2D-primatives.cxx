@@ -1,4 +1,4 @@
-#include <QVTKOpenGLNativeWidget.h>
+﻿#include <QVTKOpenGLNativeWidget.h>
 #include <vtkActor.h>
 #include <vtkDataSetMapper.h>
 #include <vtkDoubleArray.h>
@@ -53,87 +53,31 @@ int filecounter = 0;
 
 namespace {
 
-    //void addEllipse(vtkSuperquadricSource* source, vtkActor* actor,vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
-    //    /*double width = QInputDialog::getDouble(NULL, "Enter ellipse scaling factors", "width", 0, -1000, 2, 2);
-    //    double depth = QInputDialog::getDouble(NULL, "Enter ellipse scaling factors", "depth", 0, -1000, 2, 2);
-    //    double thickness = QInputDialog::getDouble(NULL, "Enter ellipse scaling factors", "thickness", 0, -1000, 2, 2);
-    //    double centerx = QInputDialog::getDouble(NULL, "Enter ellipse center", "center x", 0, -1000, 2, 2);
-    //    double centery = QInputDialog::getDouble(NULL, "Enter ellipse center", "center y", 0, -1000, 2, 2);
-    //    double centerz = QInputDialog::getDouble(NULL, "Enter ellipse center", "center z", 0, -1000, 2, 2);
-    //    
-    //    source->SetPhiRoundness(1);
-    //    source->SetThetaRoundness(1);
-    //    source->SetScale(width, depth, thickness);
-    //    source->Update();
-
-    //    actor->GetProperty()->SetColor(1.0, 0.0, 0.0);
-    //    actor->SetPosition(centerx, centery, centerz);
-    //    renderer->AddActor(actor);
-    //    window->Render();*/
-
-    //    double angle = 0;
-    //    double r1, r2;
-    //    double centerX, centerY;
-    //    r1 = 50;
-    //    r2 = 30;
-    //    centerX = 10.0;
-    //    centerY = 5.0;
-    //    vtkNew<vtkPoints> points;
-    //    int id = 0;
-    //    while (angle <= 2.0 * vtkMath::Pi() + (vtkMath::Pi() / 60.0))
-    //    {
-    //        points->InsertNextPoint(r1 * cos(angle) + centerX,
-    //            r2 * sin(angle) + centerY, 0.0);
-    //        angle = angle + (vtkMath::Pi() / 60.0);
-    //        ++id;
-    //    }
-    //    vtkNew<vtkPolyLine> line;
-    //    line->GetPointIds()->SetNumberOfIds(id);
-    //    for (unsigned int i = 0; i < static_cast<unsigned int>(id); ++i)
-    //    {
-    //        line->GetPointIds()->SetId(i, i);
-    //    }
-
-    //    vtkNew<vtkCellArray> lines;
-    //    lines->InsertNextCell(line);
-
-    //    vtkNew<vtkPolyData> polyData;
-    //    polyData->SetPoints(points);
-    //    polyData->SetLines(lines);
-    //}
-    //void addRegularPolygon(vtkRegularPolygonSource* polygonSource, vtkActor* polyactor,vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
-    //    int numsides = QInputDialog::getInt(NULL, "Enter regular polygon info", "number of sides", 0, 0, 10, 2);
-    //    double centerx = QInputDialog::getDouble(NULL, "Enter regular polygon center", "center x", 0, -1000, 1000, 2);
-    //    double centery = QInputDialog::getDouble(NULL, "Enter regular polygon center", "center y", 0, -1000, 1000, 2);
-    //    double centerz = QInputDialog::getDouble(NULL, "Enter regular polygon center", "center z", 0, -1000, 1000, 2);
-    //    double radius= QInputDialog::getDouble(NULL, "Enter regular polygon radius", "radius", 0, -1000, 1000, 2);
-    //    //vtkNew<vtkRegularPolygonSource> polygonSource;
-    //    polygonSource->SetNumberOfSides(numsides);
-    //    double center[3] = { centerx, centery,centerz };
-    //    polygonSource->SetCenter(center);
-    //    polygonSource->SetRadius(radius);          // Horizontal radius
-    //    /*vtkNew<vtkPolyDataMapper> polymapper;
-    //    polymapper->SetInputConnection(polygonSource->GetOutputPort());
-    //    vtkNew <vtkActor> polyactor;
-    //    polyactor->SetMapper(polymapper);*/
-    //    polyactor->GetProperty()->SetColor(1.0, 0.0, 0.0);
-    //    renderer->AddActor(polyactor);
-    //    window->Render();
-    //}
     void selectShape(int index, vtkGenericOpenGLRenderWindow* window, vtkActor* ellipseActor, vtkActor* regularPolygonActor) {
-        if (index == 0) {
+        if (index == 0) {//line
             cout << "line";
         }
-        else if (index == 1) {//ellipse
+        else if (index == 1) {//polyline
+
+        }
+        else if (index == 2) {//polygon
+
+        }
+        else if (index == 3) {//regular polygon
+            regularPolygonActor->SetVisibility(true);
+            ellipseActor->SetVisibility(false);
+        }        
+        else if (index == 4) {//circle
+
+        }        
+        else if (index == 5) {//arc
+
+        }        
+        else if (index == 6) {//ellipse
             ellipseActor->SetVisibility(true);
             regularPolygonActor->SetVisibility(false);
         }
-        else if (index == 2) {//regular polygon
-            regularPolygonActor->SetVisibility(true);
-            ellipseActor->SetVisibility(false);
-        }
         window->Render();
-
     }
 } // namespace
 
@@ -160,18 +104,14 @@ int main(int argc, char** argv)
     layoutContainer.setLayout(dockLayout);
     controlDock.setWidget(&layoutContainer);
 
-    /*QPushButton addEllipse;
-    addEllipse.setText("Add Ellipse");
-    dockLayout->addWidget(&addEllipse, 0, Qt::AlignTop);
-
-    QPushButton addRegularPolygon;
-    addRegularPolygon.setText("Add Regular Polygon");
-    dockLayout->addWidget(&addRegularPolygon, 0, Qt::AlignTop);*/
-
     QComboBox shapesComboBox ;
     shapesComboBox.addItem(QApplication::tr("Line"));
-    shapesComboBox.addItem(QApplication::tr("Ellipse"));
+    shapesComboBox.addItem(QApplication::tr("Polyline"));
+    shapesComboBox.addItem(QApplication::tr("Polygon"));
     shapesComboBox.addItem(QApplication::tr("Regular Polygon"));
+    shapesComboBox.addItem(QApplication::tr("Circle"));
+    shapesComboBox.addItem(QApplication::tr("Arc"));
+    shapesComboBox.addItem(QApplication::tr("Ellipse"));
     dockLayout->addWidget(&shapesComboBox, 1, Qt::AlignTop);
 
      //render area
@@ -189,56 +129,93 @@ int main(int argc, char** argv)
     vtkNew<vtkActor> lineactor;
     lineactor->SetMapper(linemapper);*/
     /*----------------------ELLIPSE---------------------*/
-    double angle = 0;
-    double r1, r2;
-    double centerX, centerY;
-    r1 = 0.25;
-    r2 = 0.1;
-    centerX = 0;
-    centerY = 0;
-    vtkNew<vtkPoints> points;
-    int id = 0;
-    while (angle <= 2.0 * vtkMath::Pi() + (vtkMath::Pi() / 60.0))
-    {
-        points->InsertNextPoint(r1 * cos(angle) + centerX,
-            r2 * sin(angle) + centerY, 0.0);
-        angle = angle + (vtkMath::Pi() / 60.0);
-        ++id;
+
+    // Define ellipse parameters
+    double cx = 0.0; // Center X
+    double cy = 0.0; // Center Y
+    double rx = 0.3; // X-axis radius (W: half - width)
+    double ry = 0.1; // Y-axis radius (H: half - height)
+    // Create points for ellipse vertices
+    vtkNew<vtkPoints> ellipsepoints;
+    for (int i = 0; i <= 360; i++) {
+        //convert from degree to radian
+        //for 0 ≤ t ≤ 2pi.
+        double theta = i* vtkMath::Pi()/180; 
+        //x(t) = W cos(t) , add cx to shift to the stated center
+        double x = cx + rx * cos(theta);
+        //y(t) = H sin(t)  , add cy to shift to the stated center
+        double y = cy + ry * sin(theta);
+        ellipsepoints->InsertNextPoint(x, y, 0.0); // z=0 because its 2D
     }
-    vtkNew<vtkPolyLine> line;
-    line->GetPointIds()->SetNumberOfIds(id);
-    for (unsigned int i = 0; i < static_cast<unsigned int>(id); ++i)
-    {
-        line->GetPointIds()->SetId(i, i);
+    // Create polyline to connect those points using lines
+    //vtkpolyline: type of VTK cell that represents a single polyline in 3D space.
+    vtkNew<vtkPolyLine> ellipsepolyline;
+    //ses the number of point IDs in the vtkIdList associated with the polyline object
+    ellipsepolyline->GetPointIds()->SetNumberOfIds(ellipsepoints->GetNumberOfPoints());
+    // iterate through each point in the points object and set the corresponding point ID in the vtkIdList associated with the polyline object. 
+    for (vtkIdType i = 0; i < ellipsepoints->GetNumberOfPoints(); ++i) {
+        ellipsepolyline->GetPointIds()->SetId(i, i);
     }
-
-    vtkNew<vtkCellArray> lines;
-    lines->InsertNextCell(line);
-
-    vtkNew<vtkPolyData> polyData;
-    polyData->SetPoints(points);
-    polyData->SetLines(lines);
-
+    //vtkPolyData:VTK data object that represents a dataset consisting of points, cells, and associated data attributes.
+    vtkNew<vtkPolyData> ellipsepolydata;
+    //set the points object as the points of the polydata object
+    ellipsepolydata->SetPoints(ellipsepoints);
+    //allocate memory for the cells in the polydata object. 
+    ellipsepolydata->Allocate();
+    //The polyline(parameter1) will be drawn using lines connecting the points(parameter2) defined by the point IDs in the vtkIdList.
+    ellipsepolydata->InsertNextCell(ellipsepolyline->GetCellType(), ellipsepolyline->GetPointIds());
     vtkNew<vtkPolyDataMapper> ellipsemapper;
-    ellipsemapper->SetInputData(polyData);
+    //mapper takes data that is going to be rendered
+    ellipsemapper->SetInputData(ellipsepolydata);
+    //actor is used to change properties
     vtkNew<vtkActor> ellipseActor;
-
     ellipseActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
     ellipseActor->SetVisibility(false);
-
     ellipseActor->SetMapper(ellipsemapper);
     
     /*---------------------regular polygon----------------------*/
-    vtkNew<vtkRegularPolygonSource> regularPolygonSource;
-    regularPolygonSource->SetNumberOfSides(5);
-    regularPolygonSource->SetCenter(0,0,0);
-    regularPolygonSource->SetRadius(0.2);          // Horizontal radius
+
+    // Create points for regular polygon vertices
+    vtkNew<vtkPoints> regularPolygonPoints;
+    //Pointi = ( R cos( 2πi / n ), R sin(2πi / n )),
+    double n = 6;
+    double r = 0.2;
+    double c = 0.0;
+    for (int i = 0; i <= n; i++) {
+        //double theta = i * vtkMath::Pi() / 180;
+        //x= R cos( 2πi / n )
+        double x = r * cos(2 * vtkMath::Pi() * i / n);
+        //y= R sin(2πi / n )
+        double y = r * sin(2 * vtkMath::Pi() * i / n);
+        regularPolygonPoints->InsertNextPoint(x, y, 0.0); // z=0 because its 2D
+    }
+    // Create polyline to connect those points using lines
+    //vtkpolyline: type of VTK cell that represents a single polyline in 3D space.
+    vtkNew<vtkPolyLine> regularPolygonPolyline;
+    //ses the number of point IDs in the vtkIdList associated with the polyline object
+    regularPolygonPolyline->GetPointIds()->SetNumberOfIds(regularPolygonPoints->GetNumberOfPoints());
+    // iterate through each point in the points object and set the corresponding point ID in the vtkIdList associated with the polyline object. 
+    for (vtkIdType i = 0; i < regularPolygonPoints->GetNumberOfPoints(); ++i) {
+        regularPolygonPolyline->GetPointIds()->SetId(i, i);
+    }
+    //vtkPolyData:VTK data object that represents a dataset consisting of points, cells, and associated data attributes.
+    vtkNew<vtkPolyData> regularPolygonPolydata;
+    //set the points object as the points of the polydata object
+    regularPolygonPolydata->SetPoints(regularPolygonPoints);
+    //allocate memory for the cells in the polydata object. 
+    regularPolygonPolydata->Allocate();
+    //The polyline(parameter1) will be drawn using lines connecting the points(parameter2) defined by the point IDs in the vtkIdList.
+    regularPolygonPolydata->InsertNextCell(regularPolygonPolyline->GetCellType(), regularPolygonPolyline->GetPointIds());
     vtkNew<vtkPolyDataMapper> regularPolygonMapper;
-    regularPolygonMapper->SetInputConnection(regularPolygonSource->GetOutputPort());
-    vtkNew <vtkActor> regularPolygonActor;
+    //mapper takes data that is going to be rendered
+    regularPolygonMapper->SetInputData(regularPolygonPolydata);
+    //actor is used to change properties
+    vtkNew<vtkActor> regularPolygonActor;
     regularPolygonActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
     regularPolygonActor->SetVisibility(false);
     regularPolygonActor->SetMapper(regularPolygonMapper);
+
+    /*---------------------renderers---------------------*/
 
     vtkNew<vtkRenderer> renderer;
     //renderer->AddActor(lineactor);
@@ -246,20 +223,11 @@ int main(int argc, char** argv)
     renderer->AddActor(regularPolygonActor);
     window->AddRenderer(renderer);
     
-    vtkNew<vtkPointPicker> pointPicker;
-    window->SetInteractor(vtkRenderWidget->interactor());
-    window->GetInteractor()->SetPicker(pointPicker);
-
-    window->SetInteractor(vtkRenderWidget->interactor());
-    //vtkNew<vtkRenderWindowInteractor> renderWindowInteractor;
     //vtkNew<vtkPointPicker> pointPicker;
+    window->SetInteractor(vtkRenderWidget->interactor());
     //window->GetInteractor()->SetPicker(pointPicker);
-    //renderWindowInteractor->SetPicker(pointPicker);
-    //interactor->SetInteractorStyle(style);
 
-    //// connect the buttons
-  /*  QObject::connect(&addEllipse, &QPushButton::released,
-        [&]() { ::addEllipse(ellipsesource, ellipseactor,window,renderer); });*/
+    //window->SetInteractor(vtkRenderWidget->interactor());
 
        QObject::connect(&shapesComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [&](int index) {
           ::selectShape(index,window,ellipseActor,regularPolygonActor);
