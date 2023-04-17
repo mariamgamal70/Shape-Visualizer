@@ -23,7 +23,7 @@
 //#include <vtkParametricEllipsoid.h>
 //#include <vtkParametricFunctionSource.h>
 //#include <vtkSuperquadricSource.h>
-#include <vtkRegularPolygonSource.h>
+//#include <vtkRegularPolygonSource.h>
 #include <vtkPoints.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkPolyLine.h>
@@ -37,12 +37,12 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QInputDialog>
-#include <QFileDialog>
+//#include <QFileDialog>
 #include <QComboBox>
 
 #include <cmath>
 #include <cstdlib>
-#include <random>
+//#include <random>
 #include <iostream>
 #include <fstream>
 using namespace std;
@@ -53,7 +53,7 @@ int filecounter = 0;
 
 namespace {
 
-    void selectShape(int index, vtkGenericOpenGLRenderWindow* window, vtkActor* ellipseActor, vtkActor* regularPolygonActor) {
+    void selectShape(int index, vtkGenericOpenGLRenderWindow* window, vtkActor* ellipseActor, vtkActor* regularPolygonActor, vtkActor* starActor) {
         if (index == 0) {//line
             cout << "line";
         }
@@ -75,6 +75,23 @@ namespace {
         }        
         else if (index == 6) {//ellipse
             ellipseActor->SetVisibility(true);
+            regularPolygonActor->SetVisibility(false);
+        }
+        else if (index == 7) {//rectangle
+            ellipseActor->SetVisibility(true);
+            regularPolygonActor->SetVisibility(false);
+        }
+        else if (index == 8) {//triangle
+            ellipseActor->SetVisibility(true);
+            regularPolygonActor->SetVisibility(false);
+        }
+        else if (index == 9) {//rhombus
+            ellipseActor->SetVisibility(true);
+            regularPolygonActor->SetVisibility(false);
+        }
+        else if (index == 10) {//star
+            starActor->SetVisibility(true);
+            ellipseActor->SetVisibility(false);
             regularPolygonActor->SetVisibility(false);
         }
         window->Render();
@@ -112,6 +129,10 @@ int main(int argc, char** argv)
     shapesComboBox.addItem(QApplication::tr("Circle"));
     shapesComboBox.addItem(QApplication::tr("Arc"));
     shapesComboBox.addItem(QApplication::tr("Ellipse"));
+    shapesComboBox.addItem(QApplication::tr("Rectangle"));
+    shapesComboBox.addItem(QApplication::tr("Triangle"));
+    shapesComboBox.addItem(QApplication::tr("Rhombus"));
+    shapesComboBox.addItem(QApplication::tr("Star"));
     dockLayout->addWidget(&shapesComboBox, 1, Qt::AlignTop);
 
      //render area
@@ -178,15 +199,15 @@ int main(int argc, char** argv)
     // Create points for regular polygon vertices
     vtkNew<vtkPoints> regularPolygonPoints;
     //Pointi = ( R cos( 2πi / n ), R sin(2πi / n )),
-    double n = 6;
-    double r = 0.2;
-    double c = 0.0;
-    for (int i = 0; i <= n; i++) {
+    double regularPolygonNoOfSides = 6;
+    double regularPolygonRadius = 0.2;
+    double regularPolygonCenter = 0.0;
+    for (int i = 0; i <= regularPolygonNoOfSides; i++) {
         //double theta = i * vtkMath::Pi() / 180;
         //x= R cos( 2πi / n )
-        double x = r * cos(2 * vtkMath::Pi() * i / n);
+        double x = regularPolygonRadius * cos(2 * vtkMath::Pi() * i / regularPolygonNoOfSides);
         //y= R sin(2πi / n )
-        double y = r * sin(2 * vtkMath::Pi() * i / n);
+        double y = regularPolygonRadius * sin(2 * vtkMath::Pi() * i / regularPolygonNoOfSides);
         regularPolygonPoints->InsertNextPoint(x, y, 0.0); // z=0 because its 2D
     }
     // Create polyline to connect those points using lines
@@ -215,12 +236,69 @@ int main(int argc, char** argv)
     regularPolygonActor->SetVisibility(false);
     regularPolygonActor->SetMapper(regularPolygonMapper);
 
+    /*---------------------star----------------------*/
+    // Create points for regular polygon vertices
+    vtkNew<vtkPoints> starPoints;
+    //rosette general equation
+    //x(t) = r * cos(k * t * theta)
+    //y(t) = r * sin(k * t * theta)
+    //r is the radius of the rosette, controlling the size of the curve.
+    //k is the number of petals or points on the rosette, controlling the number of "petals" or "points" in the curve.
+    //t is the parameter that varies from 0 to 2*pi, controlling the position of the points on the curve.
+    //theta is an additional parameter that can be adjusted to control the shape of the rosette. It is typically a constant value.
+    double starRadius = 0.2;   
+    // This scales the angle by a factor of 14,
+    //which determines the number of points or vertices in the star shape. 
+    //In this case, it generates a 14-gon shape by using 14 vertices, resulting in a star-like shape.
+    double star_K = 14.0;   
+    int starNumPoints = 10; // number of points to generate (determines smoothness)
+    for (int i = 0; i < starNumPoints; ++i) {
+        double star_T = 2 * vtkMath::Pi() * i / starNumPoints; // t ranges from 0 to 2*pi , in radians
+        //* 14: This scales the angle by a factor of 14,
+        //which determines the number of points or vertices in the star shape. 
+        //In this case, it generates a 14-gon shape by using 14 vertices, resulting in a star-like shape.
+        double x = starRadius * cos(star_T * star_K);
+        double y = starRadius * sin(star_T * star_K);
+        //flower if numpoints=100 ,phi = 0.2;
+        /*double x = starRadius * (cos(t) * cos(starConstantk * t + phi));
+        double y = starRadius * (sin(t) * cos(starConstantk * t + phi));*/
+        //sparkle or 4 point star if numpoints = 100, phi = 0.2;
+        /*double x = starRadius * pow(cos(t) * cos(starConstantk * t + phi), 3);
+        double y = starRadius * pow(sin(t) * cos(starConstantk * t + phi), 3);*/
+        starPoints->InsertNextPoint(x, y, 0.0); // z=0 because its 2D
+    }
+    // Create polyline to connect those points using lines
+    //vtkpolyline: type of VTK cell that represents a single polyline in 3D space.
+    vtkNew<vtkPolyLine> starPolyline;
+    //ses the number of point IDs in the vtkIdList associated with the polyline object
+    starPolyline->GetPointIds()->SetNumberOfIds(starPoints->GetNumberOfPoints());
+    // iterate through each point in the points object and set the corresponding point ID in the vtkIdList associated with the polyline object. 
+    for (vtkIdType i = 0; i < starPoints->GetNumberOfPoints(); ++i) {
+        starPolyline->GetPointIds()->SetId(i, i);
+    }
+    //vtkPolyData:VTK data object that represents a dataset consisting of points, cells, and associated data attributes.
+    vtkNew<vtkPolyData> starPolydata;
+    //set the points object as the points of the polydata object
+    starPolydata->SetPoints(starPoints);
+    //allocate memory for the cells in the polydata object. 
+    starPolydata->Allocate();
+    //The polyline(parameter1) will be drawn using lines connecting the points(parameter2) defined by the point IDs in the vtkIdList.
+    starPolydata->InsertNextCell(starPolyline->GetCellType(), starPolyline->GetPointIds());
+    vtkNew<vtkPolyDataMapper> starMapper;
+    //mapper takes data that is going to be rendered
+    starMapper->SetInputData(starPolydata);
+    //actor is used to change properties
+    vtkNew<vtkActor> starActor;
+    starActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
+    starActor->SetVisibility(false);
+    starActor->SetMapper(starMapper);
     /*---------------------renderers---------------------*/
 
     vtkNew<vtkRenderer> renderer;
     //renderer->AddActor(lineactor);
     renderer->AddActor(ellipseActor);
     renderer->AddActor(regularPolygonActor);
+    renderer->AddActor(starActor);
     window->AddRenderer(renderer);
     
     //vtkNew<vtkPointPicker> pointPicker;
@@ -230,7 +308,7 @@ int main(int argc, char** argv)
     //window->SetInteractor(vtkRenderWidget->interactor());
 
        QObject::connect(&shapesComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [&](int index) {
-          ::selectShape(index,window,ellipseActor,regularPolygonActor);
+          ::selectShape(index,window,ellipseActor,regularPolygonActor,starActor);
           });
     window->Render();
     mainWindow.show();
