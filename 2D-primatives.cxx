@@ -53,48 +53,63 @@ int filecounter = 0;
 
 namespace {
 
-    void selectShape(int index, vtkGenericOpenGLRenderWindow* window, vtkActor* ellipseActor, vtkActor* regularPolygonActor, vtkActor* starActor, vtk*arcActor, vtk*circleActor) {
+    void selectShape(int index, vtkGenericOpenGLRenderWindow* window, vtkActor* ellipseActor, vtkActor* regularPolygonActor, vtkActor* starActor, vtk*arcActor, vtk*circleActor, vtkActor* PolylineActor,vtkActor* irregularPolygonActor) {
         if (index == 0) {//line
             cout << "line";
         }
         else if (index == 1) {//polyline
-
-        }
-        else if (index == 2) {//polygon
-           
-        }
-        else if (index == 3) {//regular polygon
-         regularPolygonActor->SetVisibility(true);
+            regularPolygonActor->SetVisibility(false);
             ellipseActor->SetVisibility(false);
             circleActor->SetVisibility(false);
             arcActor->SetVisibility(false);
-            polygonActor->SetVisibility(false);
-            polylineActor->SetVisibility(false);
+            PolylineActor->SetVisibility(true);
+            irregularPolygonActor->SetVisibility(false);
+            starActor->SetVisibility(false);
+        }
+        else if (index == 2) {//polygon
+            regularPolygonActor->SetVisibility(false);
+            ellipseActor->SetVisibility(false);
+            circleActor->SetVisibility(false);
+            arcActor->SetVisibility(false);
+            PolylineActor->SetVisibility(false);
+            irregularPolygonActor->SetVisibility(true);
+            starActor->SetVisibility(false);
+        }
+        else if (index == 3) {//regular polygon
+           regularPolygonActor->SetVisibility(true);
+            ellipseActor->SetVisibility(false);
+            circleActor->SetVisibility(false);
+            arcActor->SetVisibility(false);
+            PolylineActor->SetVisibility(false);
+            irregularPolygonActor->SetVisibility(false);
+            starActor->SetVisibility(false);
         }        
         else if (index == 4) {//circle
             circleActor->SetVisibility(true);
             ellipseActor->SetVisibility(false);
             regularPolygonActor->SetVisibility(false);
             arcActor->SetVisibility(false);
-            polygonActor->SetVisibility(false);
+            irregularPolygonActor->SetVisibility(false);
             polylineActor->SetVisibility(false);
+            starActor->SetVisibility(false);
         }        
         else if (index == 5) {//arc
             arcActor->SetVisibility(true);
             ellipseActor->SetVisibility(false);
             regularPolygonActor->SetVisibility(false);
             circleActor->SetVisibility(false);
-            polygonActor->SetVisibility(false);
+            irregularPolygonActor->SetVisibility(false);
             polylineActor->SetVisibility(false);
+            starActor->SetVisibility(false);
         }        
         else if (index == 6) {//ellipse
-        
             ellipseActor->SetVisibility(true);
             regularPolygonActor->SetVisibility(false);
             circleActor->SetVisibility(false);
             arcActor->SetVisibility(false);
-            polygonActor ->SetVisibility(false);
+           irregularPolygonActor->SetVisibility(false);
             polylineActor->SetVisibility(false);
+             starActor->SetVisibility(false);
         }
         else if (index == 7) {//rectangle
             ellipseActor->SetVisibility(true);
@@ -112,6 +127,10 @@ namespace {
             starActor->SetVisibility(true);
             ellipseActor->SetVisibility(false);
             regularPolygonActor->SetVisibility(false);
+            circleActor->SetVisibility(false);
+            arcActor->SetVisibility(false);
+           irregularPolygonActor->SetVisibility(false);
+            polylineActor->SetVisibility(false);
         }
         window->Render();
     }
@@ -353,6 +372,98 @@ int main(int argc, char** argv)
     arcActor->GetProperty()->SetColor(1, 0, 0);
     arcActor->SetVisibility(false);
     arcActor->SetMapper(arcMapper);
+    /*---------------------irregular polygone--------------------*/
+    vtkNew<vtkPoints> irregularPolygonPoints;
+
+    // Generate random coordinates for each vertex
+    srand(time(NULL));
+    double maxX = 0.5;
+    double maxY = 0.5;
+  
+    irregularPolygonPoints->InsertNextPoint(0.0, 0.5, 0);
+    irregularPolygonPoints->InsertNextPoint(0.5, 0.2, 0);
+    irregularPolygonPoints->InsertNextPoint(0.3, -0.2, 0);
+    irregularPolygonPoints->InsertNextPoint(0.0, 0.0, 0);
+    irregularPolygonPoints->InsertNextPoint(-0.3, -0.3, 0);
+    irregularPolygonPoints->InsertNextPoint(-0.5, 0.3, 0);
+   /* for (int i = 0; i < 6; i++) {
+        double x = (double)rand() / RAND_MAX * maxX - maxX / 2;
+        double y = (double)rand() / RAND_MAX * maxY - maxY / 2;
+        irregularPolygonPoints->InsertNextPoint(x, y, 0.0);
+    }*/
+    
+    irregularPolygonPoints->InsertNextPoint(0.0, 0.5, 0);
+
+    // Create polyline to connect those points using lines
+    vtkNew<vtkPolyLine> irregularPolygonPolyline;
+    irregularPolygonPolyline->GetPointIds()->SetNumberOfIds(irregularPolygonPoints->GetNumberOfPoints());
+    for (vtkIdType i = 0; i < irregularPolygonPoints->GetNumberOfPoints(); ++i) {
+        irregularPolygonPolyline->GetPointIds()->SetId(i, i);
+    }
+
+    // Create polydata to represent the irregular polygon
+    vtkNew<vtkPolyData> irregularPolygonPolydata;
+    irregularPolygonPolydata->SetPoints(irregularPolygonPoints);
+    irregularPolygonPolydata->Allocate();
+    irregularPolygonPolydata->InsertNextCell(irregularPolygonPolyline->GetCellType(), irregularPolygonPolyline->GetPointIds());
+
+    // Create mapper to map the polydata to graphics primitives
+    vtkNew<vtkPolyDataMapper> irregularPolygonMapper;
+    irregularPolygonMapper->SetInputData(irregularPolygonPolydata);
+
+    // Create actor to represent the irregular polygon in the scene
+    vtkNew<vtkActor> irregularPolygonActor;
+    irregularPolygonActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
+    irregularPolygonActor->SetVisibility(false);
+    irregularPolygonActor->SetMapper(irregularPolygonMapper);
+ /*----------------------polyline--------------------*/
+    
+
+    // Create five points.
+    double origin[3] = { -0.2, 0.5, 0.0 };
+    double p0[3] = { 0.0, 0.0, 0.0 };
+    double p1[3] = { 0.1, 0.0, 0.0 };
+    double p2[3] = { 0.2, -0.4, 0.0 };
+    double p3[3] = { 0.3, 0.0, 0.0 };
+
+    // Create a vtkPoints object and store the points in it
+    vtkNew<vtkPoints> points;
+    points->InsertNextPoint(origin);
+    points->InsertNextPoint(p0);
+    points->InsertNextPoint(p1);
+    points->InsertNextPoint(p2);
+    points->InsertNextPoint(p3);
+
+    vtkNew<vtkPolyLine> polyLine;
+    polyLine->GetPointIds()->SetNumberOfIds(5);
+    for (unsigned int i = 0; i < 5; i++)
+    {
+        polyLine->GetPointIds()->SetId(i, i);
+    }
+
+    // Create a cell array to store the lines in and add the lines to it
+    vtkNew<vtkCellArray> cells;
+    cells->InsertNextCell(polyLine);
+
+    // Create a polydata to store everything in
+    vtkNew<vtkPolyData> polyData;
+
+    // Add the points to the dataset
+    polyData->SetPoints(points);
+
+    // Add the lines to the dataset
+    polyData->SetLines(cells);
+
+    // Setup actor and mapper
+    vtkNew<vtkPolyDataMapper> PolylineMapper;
+    PolylineMapper->SetInputData(polyData);
+
+    vtkNew<vtkActor> PolylineActor;
+    PolylineActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
+    PolylineActor->SetVisibility(false);
+    PolylineActor->SetMapper(PolylineMapper);
+
+
     /*---------------------renderers---------------------*/
 
     vtkNew<vtkRenderer> renderer;
@@ -362,6 +473,8 @@ int main(int argc, char** argv)
     renderer->AddActor(starActor);
     renderer->AddActor(circleActor);
     renderer->AddActor(arcActor);
+    renderer->AddActor(irregularPolygonActor);
+    renderer->AddActor(PolylineActor);
 
     window->AddRenderer(renderer);
     
@@ -372,7 +485,7 @@ int main(int argc, char** argv)
     //window->SetInteractor(vtkRenderWidget->interactor());
 
        QObject::connect(&shapesComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [&](int index) {
-          ::selectShape(index,window,ellipseActor,regularPolygonActor,starActor,circleActor, arcActor );
+          ::selectShape(index,window,ellipseActor,regularPolygonActor,starActor,circleActor, arcActor ,PolylineActor, irregularPolygonActor );
           });
     window->Render();
     mainWindow.show();
