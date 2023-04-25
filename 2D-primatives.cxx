@@ -53,7 +53,7 @@ int filecounter = 0;
 
 namespace {
 
-    void selectShape(int index, vtkGenericOpenGLRenderWindow* window, vtkActor* ellipseActor, vtkActor* regularPolygonActor, vtkActor* starActor) {
+    void selectShape(int index, vtkGenericOpenGLRenderWindow* window, vtkActor* ellipseActor, vtkActor* regularPolygonActor, vtkActor* starActor, vtk*arcActor, vtk*circleActor) {
         if (index == 0) {//line
             cout << "line";
         }
@@ -61,21 +61,40 @@ namespace {
 
         }
         else if (index == 2) {//polygon
-
+           
         }
         else if (index == 3) {//regular polygon
-            regularPolygonActor->SetVisibility(true);
+         regularPolygonActor->SetVisibility(true);
             ellipseActor->SetVisibility(false);
+            circleActor->SetVisibility(false);
+            arcActor->SetVisibility(false);
+            polygonActor->SetVisibility(false);
+            polylineActor->SetVisibility(false);
         }        
         else if (index == 4) {//circle
-
+            circleActor->SetVisibility(true);
+            ellipseActor->SetVisibility(false);
+            regularPolygonActor->SetVisibility(false);
+            arcActor->SetVisibility(false);
+            polygonActor->SetVisibility(false);
+            polylineActor->SetVisibility(false);
         }        
         else if (index == 5) {//arc
-
+            arcActor->SetVisibility(true);
+            ellipseActor->SetVisibility(false);
+            regularPolygonActor->SetVisibility(false);
+            circleActor->SetVisibility(false);
+            polygonActor->SetVisibility(false);
+            polylineActor->SetVisibility(false);
         }        
         else if (index == 6) {//ellipse
+        
             ellipseActor->SetVisibility(true);
             regularPolygonActor->SetVisibility(false);
+            circleActor->SetVisibility(false);
+            arcActor->SetVisibility(false);
+            polygonActor ->SetVisibility(false);
+            polylineActor->SetVisibility(false);
         }
         else if (index == 7) {//rectangle
             ellipseActor->SetVisibility(true);
@@ -292,6 +311,48 @@ int main(int argc, char** argv)
     starActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
     starActor->SetVisibility(false);
     starActor->SetMapper(starMapper);
+
+    /*----------------------CIRCLE---------------------*/
+    vtkNew<vtkPoints> circlepoints;
+    vtkNew<vtkCellArray> circlelines;
+
+    double angle_step = 2.0 * vtkMath::Pi() / 100.0;
+    for (int i = 0; i < 100; i++) {
+        double x = cos(i * angle_step);
+        double y = sin(i * angle_step);
+        double z = 0.0;
+        circlepoints->InsertNextPoint(x, y, z);
+        vtkIdType ids[2] = { i, (i + 1) % 100 };
+        circlelines->InsertNextCell(2, ids);
+    }
+
+    vtkNew<vtkPolyData> circlePolyData;
+    circlePolyData->SetPoints(circlepoints);
+    circlePolyData->SetLines(circlelines);
+
+    vtkNew<vtkPolyDataMapper> circleMapper;
+    circleMapper->SetInputData(circlePolyData);
+   
+
+    vtkNew<vtkActor> circleActor;
+    circleActor->GetProperty()->SetColor(0, 0, 1);
+    circleActor->SetVisibility(false);
+    circleActor->SetMapper(circleMapper);
+     /*----------------------ARC---------------------*/
+
+    vtkNew<vtkArcSource> arcSource;
+    arcSource->SetCenter(0, 0, 0);
+    arcSource->SetPoint1(0.25, 0, 0);
+    arcSource->SetPoint2(0, 0.25, 0);
+    arcSource->SetAngle(90);
+    arcSource->SetResolution(50);
+    arcSource->Update();
+    vtkNew<vtkPolyDataMapper> arcMapper;
+    arcMapper->SetInputConnection(arcSource->GetOutputPort());
+    vtkNew<vtkActor> arcActor;
+    arcActor->GetProperty()->SetColor(1, 0, 0);
+    arcActor->SetVisibility(false);
+    arcActor->SetMapper(arcMapper);
     /*---------------------renderers---------------------*/
 
     vtkNew<vtkRenderer> renderer;
@@ -299,6 +360,9 @@ int main(int argc, char** argv)
     renderer->AddActor(ellipseActor);
     renderer->AddActor(regularPolygonActor);
     renderer->AddActor(starActor);
+    renderer->AddActor(circleActor);
+    renderer->AddActor(arcActor);
+
     window->AddRenderer(renderer);
     
     //vtkNew<vtkPointPicker> pointPicker;
@@ -308,7 +372,7 @@ int main(int argc, char** argv)
     //window->SetInteractor(vtkRenderWidget->interactor());
 
        QObject::connect(&shapesComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [&](int index) {
-          ::selectShape(index,window,ellipseActor,regularPolygonActor,starActor);
+          ::selectShape(index,window,ellipseActor,regularPolygonActor,starActor,circleActor, arcActor );
           });
     window->Render();
     mainWindow.show();
