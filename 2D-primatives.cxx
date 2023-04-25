@@ -33,12 +33,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
-#include <fstream>
 using namespace std;
-
-ofstream myfile;
-ifstream readfile;
-int filecounter = 0;
 
 namespace {
     // Define interaction style
@@ -52,15 +47,15 @@ namespace {
         {
             int x = this->Interactor->GetEventPosition()[0];
             int y = this->Interactor->GetEventPosition()[1];
-            cout << x<<" " << y;
+            cout << x<<" " << y<<endl;
             vtkRenderer* renderer = this->Interactor->FindPokedRenderer(x, y);
             this->Interactor->GetPicker()->Pick(x, y, 0, renderer);
             double pickedPoint[3];
+            cout << pickedPoint[0] << " " << pickedPoint[1] << " " << pickedPoint[2] << endl;
             this->Interactor->GetPicker()->GetPickPosition(pickedPoint);
             setSelectedActor();
             if (SelectedActor)
             {
-                SelectedActor->SetPosition(pickedPoint);
                 SelectedActor->SetDragable(true);
                 SelectedActor->SetPickable(false);
                 /*vtkNew <vtkTransform> transform;
@@ -70,6 +65,8 @@ namespace {
                 LastPosition[1] = pickedPoint[1];
                 LastPosition[2] = pickedPoint[2];
                 cout << LastPosition[0] << " " << LastPosition[1] << " " << LastPosition[2] << " ";
+                SelectedActor->SetPosition(pickedPoint);
+
             }
 
             // Forward events
@@ -97,16 +94,18 @@ namespace {
         }
         void setSelectedActor() {
         // safely cast the vtkProp object returned by GetLastProp() to an vtkActor object
-            vtkActor* SelectedActor = vtkActor::SafeDownCast(this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->GetActors()->GetLastProp());
+            SelectedActor = vtkActor::SafeDownCast(this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->GetActors()->GetLastProp());
+        }
+        void setSelectedPolyData() {
+            polyData = vtkPolyData::SafeDownCast(SelectedActor->GetMapper()->GetInputDataObject(0, 0));
         }
 
     private:
         double LastPosition[3];
         vtkActor* SelectedActor;
+        vtkPolyData* polyData;
     };
     vtkStandardNewMacro(customMouseInteractorStyle);
-
-
 
     vtkNew<vtkPoints> drawEllipse() {
         // Define ellipse parameters
@@ -178,6 +177,45 @@ namespace {
         }
         return starPoints;
     }
+    vtkNew<vtkPoints>drawPolyline() {
+        // Create five points.
+        double origin[3] = { -0.2, 0.5, 0.0 };
+        double p0[3] = { 0.0, 0.0, 0.0 };
+        double p1[3] = { 0.1, 0.0, 0.0 };
+        double p2[3] = { 0.2, -0.4, 0.0 };
+        double p3[3] = { 0.3, 0.0, 0.0 };
+
+        // Create a vtkPoints object and store the points in it
+        vtkNew<vtkPoints> points;
+        points->InsertNextPoint(origin);
+        points->InsertNextPoint(p0);
+        points->InsertNextPoint(p1);
+        points->InsertNextPoint(p2);
+        points->InsertNextPoint(p3);
+        return points;
+    }
+    vtkNew<vtkPoints>drawIrregularPolygon() {
+        vtkNew<vtkPoints> irregularPolygonPoints;
+        // Generate random coordinates for each vertex
+        srand(time(NULL));
+        double maxX = 0.5;
+        double maxY = 0.5;
+
+        irregularPolygonPoints->InsertNextPoint(0.0, 0.5, 0);
+        irregularPolygonPoints->InsertNextPoint(0.5, 0.2, 0);
+        irregularPolygonPoints->InsertNextPoint(0.3, -0.2, 0);
+        irregularPolygonPoints->InsertNextPoint(0.0, 0.0, 0);
+        irregularPolygonPoints->InsertNextPoint(-0.3, -0.3, 0);
+        irregularPolygonPoints->InsertNextPoint(-0.5, 0.3, 0);
+        /* for (int i = 0; i < 6; i++) {
+             double x = (double)rand() / RAND_MAX * maxX - maxX / 2;
+             double y = (double)rand() / RAND_MAX * maxY - maxY / 2;
+             irregularPolygonPoints->InsertNextPoint(x, y, 0.0);
+         }*/
+
+        irregularPolygonPoints->InsertNextPoint(0.0, 0.5, 0);
+        return irregularPolygonPoints;
+    }
     void selectShape(int index, vtkGenericOpenGLRenderWindow* window,vtkRenderer* renderer) {
         vtkNew<vtkPoints> points;
         int numActors = renderer->GetActors()->GetNumberOfItems();
@@ -189,10 +227,10 @@ namespace {
 
         }
         else if (index == 1) {//polyline
-
+            points = drawPolyline();
         }
-        else if (index == 2) {//polygon
-
+        else if (index == 2) {//irregular polygon
+            points = drawIrregularPolygon();
         }
         else if (index == 3) {//regular polygon
             points = drawRegularPolygon();
@@ -274,7 +312,7 @@ int main(int argc, char** argv)
     QComboBox shapesComboBox ;
     shapesComboBox.addItem(QApplication::tr("Line"));
     shapesComboBox.addItem(QApplication::tr("Polyline"));
-    shapesComboBox.addItem(QApplication::tr("Polygon"));
+    shapesComboBox.addItem(QApplication::tr("Irregular Polygon"));
     shapesComboBox.addItem(QApplication::tr("Regular Polygon"));
     shapesComboBox.addItem(QApplication::tr("Circle"));
     shapesComboBox.addItem(QApplication::tr("Arc"));
