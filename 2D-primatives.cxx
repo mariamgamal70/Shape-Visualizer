@@ -8,25 +8,16 @@
 #include <vtkRenderer.h>
 #include <vtkSphereSource.h>
 #include <vtkNew.h>
-//#include <vtkInteractorStyleTrackballCamera.h>
-//#include <vtkRenderWindowInteractor.h>
-//#include <vtkRenderWindow.h>
-//#include <vtkNamedColors.h>
+#include <vtkInteractorStyleTrackballCamera.h>
+#include <vtkRenderWindowInteractor.h>
 #include <vtkLineSource.h>
 #include <vtkPointPicker.h>
 #include <vtkRendererCollection.h>
 #include <vtkPolyDataMapper.h>
-//#include <vtkTextActor.h>
-//#include <vtkTextProperty.h>
-//#include <vtkTextRepresentation.h>
-//#include <vtkTextWidget.h>
-//#include <vtkParametricEllipsoid.h>
-//#include <vtkParametricFunctionSource.h>
-//#include <vtkSuperquadricSource.h>
-//#include <vtkRegularPolygonSource.h>
 #include <vtkPoints.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkPolyLine.h>
+#include <vtkTransform.h>
 
 #include <QApplication>
 #include <QDockWidget>
@@ -37,12 +28,10 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QInputDialog>
-//#include <QFileDialog>
 #include <QComboBox>
 
 #include <cmath>
 #include <cstdlib>
-//#include <random>
 #include <iostream>
 #include <fstream>
 using namespace std;
@@ -52,6 +41,73 @@ ifstream readfile;
 int filecounter = 0;
 
 namespace {
+    // Define interaction style
+    class customMouseInteractorStyle : public vtkInteractorStyleTrackballCamera
+    {
+    public:
+        static customMouseInteractorStyle* New();
+        vtkTypeMacro(customMouseInteractorStyle, vtkInteractorStyleTrackballCamera);
+
+        virtual void OnLeftButtonDown() override
+        {
+            int x = this->Interactor->GetEventPosition()[0];
+            int y = this->Interactor->GetEventPosition()[1];
+            cout << x<<" " << y;
+            vtkRenderer* renderer = this->Interactor->FindPokedRenderer(x, y);
+            this->Interactor->GetPicker()->Pick(x, y, 0, renderer);
+            double pickedPoint[3];
+            this->Interactor->GetPicker()->GetPickPosition(pickedPoint);
+            setSelectedActor();
+            if (SelectedActor)
+            {
+                SelectedActor->SetPosition(pickedPoint);
+                SelectedActor->SetDragable(true);
+                SelectedActor->SetPickable(false);
+                /*vtkNew <vtkTransform> transform;
+                transform->Translate(pickedPoint);
+                SelectedActor->SetUserTransform(transform);*/
+                LastPosition[0] = pickedPoint[0];
+                LastPosition[1] = pickedPoint[1];
+                LastPosition[2] = pickedPoint[2];
+                cout << LastPosition[0] << " " << LastPosition[1] << " " << LastPosition[2] << " ";
+            }
+
+            // Forward events
+            vtkInteractorStyleTrackballCamera::OnLeftButtonDown();
+        }
+        virtual void OnLeftButtonUp() override
+        {
+            if (SelectedActor) {
+                // Save the new position of the selected actor
+                double newPosition[3];
+                SelectedActor->GetPosition(newPosition);
+                LastPosition[0] = newPosition[0];
+                LastPosition[1] = newPosition[1];
+                LastPosition[2] = newPosition[2];
+
+                // Reset the actor's properties
+                SelectedActor->GetProperty()->SetColor(1, 1, 1);
+                SelectedActor->SetDragable(false);
+                SelectedActor->SetPickable(true);
+                SelectedActor = nullptr;
+            }
+
+            // Forward the event to the parent class
+            vtkInteractorStyleTrackballCamera::OnLeftButtonUp();
+        }
+        void setSelectedActor() {
+        // safely cast the vtkProp object returned by GetLastProp() to an vtkActor object
+            vtkActor* SelectedActor = vtkActor::SafeDownCast(this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->GetActors()->GetLastProp());
+        }
+
+    private:
+        double LastPosition[3];
+        vtkActor* SelectedActor;
+    };
+    vtkStandardNewMacro(customMouseInteractorStyle);
+
+
+
     vtkNew<vtkPoints> drawEllipse() {
         // Define ellipse parameters
         vtkNew<vtkPoints> ellipsepoints;
@@ -243,11 +299,15 @@ int main(int argc, char** argv)
     vtkNew<vtkRenderer> renderer;
     window->AddRenderer(renderer);
     
-    //vtkNew<vtkPointPicker> pointPicker;
+    vtkNew<vtkPointPicker> pointPicker;
     window->SetInteractor(vtkRenderWidget->interactor());
-    //window->GetInteractor()->SetPicker(pointPicker);
+    window->GetInteractor()->SetPicker(pointPicker);
 
-    //window->SetInteractor(vtkRenderWidget->interactor());
+    vtkNew<customMouseInteractorStyle> style;
+    //style->setLineSource(linesource);
+    //style->setVTKActor(lineactor);
+
+    window->GetInteractor()->SetInteractorStyle(style);
 
        QObject::connect(&shapesComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [&](int index) {
           ::selectShape(index,window,renderer);
