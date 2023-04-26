@@ -222,8 +222,8 @@ namespace {
 
         double angle_step = 2.0 * vtkMath::Pi() / 100.0;
         for (int i = 0; i <= 100; i++) {
-            double x = 0.9*cos(i * angle_step);
-            double y = 0.9*sin(i * angle_step);
+            double x = cos(i * angle_step);
+            double y = sin(i * angle_step);
             double z = 0.0;
             circlepoints->InsertNextPoint(x, y, z);
             /*vtkIdType ids[2] = { i, (i + 1) % 100 };
