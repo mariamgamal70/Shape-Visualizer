@@ -216,6 +216,27 @@ namespace {
         irregularPolygonPoints->InsertNextPoint(0.0, 0.5, 0);
         return irregularPolygonPoints;
     }
+    vtkNew<vtkPoints>drawCircle() {
+        vtkNew<vtkPoints> circlepoints;
+        vtkNew<vtkCellArray> circlelines;
+
+        double angle_step = 2.0 * vtkMath::Pi() / 100.0;
+        for (int i = 0; i <= 100; i++) {
+            double x = 0.9*cos(i * angle_step);
+            double y = 0.9*sin(i * angle_step);
+            double z = 0.0;
+            circlepoints->InsertNextPoint(x, y, z);
+            /*vtkIdType ids[2] = { i, (i + 1) % 100 };
+            circlelines->InsertNextCell(2, ids);*/
+        }
+
+            return circlepoints;
+    }
+
+    vtkNew<vtkPoints>drawArc() {
+
+    }
+
     void selectShape(int index, vtkGenericOpenGLRenderWindow* window,vtkRenderer* renderer) {
         vtkNew<vtkPoints> points;
         int numActors = renderer->GetActors()->GetNumberOfItems();
@@ -236,7 +257,7 @@ namespace {
             points = drawRegularPolygon();
         }        
         else if (index == 4) {//circle
-
+            points = drawCircle();
         }        
         else if (index == 5) {//arc
 
