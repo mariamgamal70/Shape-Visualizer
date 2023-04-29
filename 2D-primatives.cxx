@@ -102,65 +102,51 @@ namespace {
     //vtkStandardNewMacro(customMouseInteractorStyle);
     
     
-    //class ScalingInteractorStyle : public vtkInteractorStyleTrackballActor
-    //{
-    //public:
-    //    static ScalingInteractorStyle* New();
-    //    vtkTypeMacro(ScalingInteractorStyle, vtkInteractorStyleTrackballActor);
+    class ScalingInteractorStyle : public vtkInteractorStyleTrackballActor
+    {
+    public:
+        static ScalingInteractorStyle* New();
+        vtkTypeMacro(ScalingInteractorStyle, vtkInteractorStyleTrackballActor);
+        double scaleFactor = 1.0;
+        virtual void OnMouseWheelForward() override
+        {
+            scaleFactor += 0.1;
+            ScaleActor(this->Interactor,scaleFactor);
+            vtkInteractorStyleTrackballActor::OnMouseWheelForward();
+        }
 
-    //    virtual void OnMouseWheelForward() override
-    //    {
-    //        ScaleActor(1.1);
-    //        vtkInteractorStyleTrackballActor::OnMouseWheelForward();
-    //    }
+        virtual void OnMouseWheelBackward() override
+        {
+            scaleFactor -= 0.1;
+            ScaleActor(this->Interactor, scaleFactor);
+            vtkInteractorStyleTrackballActor::OnMouseWheelBackward();
+        }
 
-    //    virtual void OnMouseWheelBackward() override
-    //    {
-    //        ScaleActor(0.9);
-    //        vtkInteractorStyleTrackballActor::OnMouseWheelBackward();
-    //    }
+    protected:
+        vtkSmartPointer<vtkActor> SelectedActor;
 
-    //protected:
-    //    vtkSmartPointer<vtkActor> SelectedActor;
+        void ScaleActor(vtkRenderWindowInteractor* interactor,double scalefactor)
+        {
+            vtkRenderer* renderer;
+            vtkActor* actor;
+            renderer = interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer();
+            actor=renderer->GetActors()->GetLastActor();
+            if (actor != nullptr) {
+                // Create a transform object with the scaling applied.
+                vtkNew<vtkTransform> transform;
+                transform->PostMultiply();
+                transform->Scale(scalefactor, scalefactor, scalefactor);
 
-    //    void ScaleActor(double factor)
-    //    {
-    //        // Get the prop picker
-    //        vtkNew<vtkPropPicker> picker;
-    //        int x = this->Interactor->GetEventPosition()[0];
-    //        int y = this->Interactor->GetEventPosition()[1];
-    //        this->CurrentRenderer->SetDisplayPoint(x, y, 0.0);
-    //        this->CurrentRenderer->PickProp(x, y); 
-    //        picker->PickProp(x, y, this->CurrentRenderer);
+                // Apply the transform to the actor.
+                actor->SetUserTransform(transform.Get());
+                actor->Modified();
 
-    //        // Get the selected actor
-    //        vtkProp* prop = picker->GetActor();
-    //        if (prop)
-    //        {
-    //            this->SelectedActor = vtkActor::SafeDownCast(prop);
-
-    //            // Get the current scale of the actor
-    //            double currentScale[3];
-    //            this->SelectedActor->GetScale(currentScale);
-
-    //            // Compute the new scale based on the scroll wheel factor
-    //            double newScale[3];
-    //            newScale[0] = currentScale[0] * factor;
-    //            newScale[1] = currentScale[1] * factor;
-    //            newScale[2] = currentScale[2] * factor;
-
-    //            // Apply the new scale to the actor
-    //            vtkSmartPointer<vtkTransform> transform = vtkSmartPointer<vtkTransform>::New();
-    //            transform->Scale(newScale);
-    //            this->SelectedActor->SetUserTransform(transform);
-    //        }
-    //    }
-
-    //};
-
-    //vtkStandardNewMacro(ScalingInteractorStyle);
-
-
+                // Render the scene to see the scaling effect applied.
+                interactor->GetRenderWindow()->Render(); //window instead of renderer?
+            }
+        }
+    };
+    vtkStandardNewMacro(ScalingInteractorStyle);
 
     vtkNew<vtkPoints> drawLine() {
         vtkNew<vtkPoints> linepoints;
@@ -189,6 +175,7 @@ namespace {
         }
         return ellipsepoints;
     }
+
     vtkNew<vtkPoints> drawRegularPolygon() {
         // Create points for regular polygon vertices
         vtkNew<vtkPoints> regularPolygonPoints;
@@ -206,6 +193,7 @@ namespace {
         }
         return regularPolygonPoints;
     }
+
     vtkNew<vtkPoints> drawStar() {
         // Create points for regular polygon vertices
         vtkNew<vtkPoints> starPoints;
@@ -239,6 +227,7 @@ namespace {
         }
         return starPoints;
     }
+
     vtkNew<vtkPoints>drawPolyline() {
         // Create five points.
         double origin[3] = { -0.2, 0.5, 0.0 };
@@ -256,6 +245,7 @@ namespace {
         points->InsertNextPoint(p3);
         return points;
     }
+
     vtkNew<vtkPoints>drawIrregularPolygon() {
         vtkNew<vtkPoints> irregularPolygonPoints;
         // Generate random coordinates for each vertex
@@ -278,6 +268,7 @@ namespace {
         irregularPolygonPoints->InsertNextPoint(0.0, 0.5, 0);
         return irregularPolygonPoints;
     }
+
     vtkNew<vtkPoints>drawCircle() {
         vtkNew<vtkPoints> circlepoints;
 
@@ -421,28 +412,111 @@ namespace {
             window->Render();
         }
     }
+
     void applyShear(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
+        double shearFactorX = QInputDialog::getDouble(NULL, "Enter shear factor X", "shear factor X", 0, -1000, 1000, 3);
+        double shearFactorY = QInputDialog::getDouble(NULL, "Enter shear factor Y", "shear factor Y", 0, -1000, 1000, 3);
+
         vtkProp* prop = renderer->GetActors()->GetLastProp();
         vtkActor* actor = dynamic_cast<vtkActor*>(prop);
 
         vtkNew<vtkTransform> transform;
-        double elements[16] = { 1.0, 0.0, 0.0, 0.0,
-                       0.0, 1.0, 0.0, 0.0,
-                       0.0, 0.0, 1.0, 0.0,
-                       1.0, 2.0, 3.0, 1.0 };
+        double shearElements[16] = { 1.0, shearFactorX, 0.0, 0.0,
+                                    shearFactorY, 1.0, 0.0, 0.0,
+                                   0.0, 0.0, 1.0, 0.0,
+                                   0.0, 0.0, 0.0, 1.0 };
 
         // Set the shearing matrix in the transform
-        transform->SetMatrix(elements);
+        transform->SetMatrix(shearElements);
         if (actor != nullptr) {
             // Set the actor's user transform to be the shearing transform.
             actor->SetUserMatrix(transform->GetMatrix());
             actor->Modified();
 
             // Render the scene to see the shearing effect applied.
-            renderer->Render();
+            window->Render();
         }
-
     }
+
+    void applyTranslation(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
+        double x = QInputDialog::getDouble(NULL, "Enter x translation", "x translation", 0, -1000, 1000, 3);
+        double y = QInputDialog::getDouble(NULL, "Enter y translation", "y translation", 0, -1000, 1000, 3);
+        vtkProp* prop = renderer->GetActors()->GetLastProp();
+        vtkActor* actor = renderer->GetActors()->GetLastActor();
+        vtkMapper* mapper = actor->GetMapper();
+        vtkPolyData* data = vtkPolyData::SafeDownCast(mapper->GetInput());
+        vtkPoints* points = data->GetPoints();
+        vtkIdType numPoints = points->GetNumberOfPoints();
+        //translate each point Q = P + d
+        //Q -> new place
+        //P-> old place
+        //d-> translation
+        for (vtkIdType i = 0; i < numPoints; i++) {
+            double* pt = points->GetPoint(i);
+            pt[0] += x;
+            pt[1] += y;
+            points->SetPoint(i, pt);
+        }
+        points->Modified();
+        window->Render();
+    }
+
+    void applyRotation(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
+        double angle = QInputDialog::getDouble(NULL, "Enter angle in degrees", "Rotation angle", 0, -360, 360, 3);
+        double angleRad = vtkMath::RadiansFromDegrees(angle);
+
+        vtkProp* prop = renderer->GetActors()->GetLastProp();
+        vtkActor* actor = renderer->GetActors()->GetLastActor();
+        vtkMapper* mapper = actor->GetMapper();
+        vtkPolyData* data = vtkPolyData::SafeDownCast(mapper->GetInput());
+        vtkPoints* points = data->GetPoints();
+        vtkIdType numPoints = points->GetNumberOfPoints();
+        //create an empty matrix
+        vtkMatrix4x4* rotation = vtkMatrix4x4::New();
+        //identity matrix initially
+        rotation->Identity();
+        //Qx= Pxcos(θ) − Pysin(θ)
+        //Qy = Pxsin(θ) + Pycos(θ)
+        //Q -> new place
+        //P-> old place
+        //set element sets the matrix,its parameters are row,column,value
+        rotation->SetElement(0, 0, cos(angleRad));
+        rotation->SetElement(0, 1, -sin(angleRad));
+        rotation->SetElement(1, 0, sin(angleRad));
+        rotation->SetElement(1, 1, cos(angleRad));
+        for (vtkIdType i = 0; i < numPoints; i++) {
+            double* pt = points->GetPoint(i);
+            double p[4] = { pt[0], pt[1], pt[2], 1 };
+            double q[4] = { 0, 0, 0, 0 };//store result of array multiplication in q
+            rotation->MultiplyPoint(p, q);//multiply matrix of rotation by the matrix of points p and store it in q
+            pt[0] = q[0];
+            pt[1] = q[1];
+            pt[2] = q[2];
+            points->SetPoint(i, pt);
+        }
+        points->Modified();
+        window->Render();
+    }
+
+    void applyScaling(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
+        double scalingfactor = QInputDialog::getDouble(NULL, "enter scaling factor", "scaling factor", 0, -1000, 1000, 3);
+
+        vtkProp* prop = renderer->GetActors()->GetLastProp();
+        vtkActor* actor = renderer->GetActors()->GetLastActor();
+        vtkMapper* mapper = actor->GetMapper();
+        vtkPolyData* data = vtkPolyData::SafeDownCast(mapper->GetInput());
+        vtkPoints* points = data->GetPoints();
+        vtkIdType numPoints = points->GetNumberOfPoints();
+        for (vtkIdType i = 0; i < numPoints; i++) {
+            double* pt = points->GetPoint(i);
+            pt[0] *= scalingfactor;
+            pt[1] *= scalingfactor;            
+            points->SetPoint(i, pt);
+        }
+        points->Modified();
+        window->Render();
+    }
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -489,7 +563,16 @@ int main(int argc, char** argv)
     QPushButton deleteButton("Delete Selected Shape");
     dockLayout->addWidget(&deleteButton, 1, Qt::AlignTop);
 
-    QPushButton shearButton("Apply shear");
+    QPushButton translateButton("Apply Translation");
+    dockLayout->addWidget(&translateButton, 1, Qt::AlignTop);
+    
+    QPushButton rotateButton("Apply rotating");
+    dockLayout->addWidget(&rotateButton, 1, Qt::AlignTop);
+
+    QPushButton scaleButton("Apply rotating");
+    dockLayout->addWidget(&scaleButton, 1, Qt::AlignTop);
+
+    QPushButton shearButton("Apply shearing");
     dockLayout->addWidget(&shearButton, 1, Qt::AlignTop);
 
      //render area
@@ -510,7 +593,7 @@ int main(int argc, char** argv)
     window->SetInteractor(vtkRenderWidget->interactor());
     window->GetInteractor()->SetPicker(pointPicker);
 
-    vtkNew<vtkInteractorStyleTrackballActor> style;
+    vtkNew<ScalingInteractorStyle> style;
 
     //vtkNew<customMouseInteractorStyle> style;
     //style->setLineSource(linesource);
@@ -525,6 +608,15 @@ int main(int argc, char** argv)
        // connect button to slot
        QObject::connect(&deleteButton, &QPushButton::clicked, [&]() {
            ::deleteSelectedShape(window, renderer);
+           });
+       QObject::connect(&translateButton, &QPushButton::clicked, [&]() {
+           ::applyTranslation(window, renderer);
+           });
+       QObject::connect(&rotateButton, &QPushButton::clicked, [&]() {
+           ::applyRotation(window, renderer);
+           });
+       QObject::connect(&scaleButton, &QPushButton::clicked, [&]() {
+           ::applyScaling(window, renderer);
            });
        QObject::connect(&shearButton, &QPushButton::clicked, [&]() {
            ::applyShear(window, renderer);
