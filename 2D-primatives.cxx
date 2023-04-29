@@ -29,6 +29,7 @@
 #include <QVBoxLayout>
 #include <QInputDialog>
 #include <QComboBox>
+#include <QStandardItem>
 
 #include <cmath>
 #include <cstdlib>
@@ -45,15 +46,20 @@ namespace {
 
         virtual void OnLeftButtonDown() override
         {
+            //get the x and y coordinates of the mouse click.
             int x = this->Interactor->GetEventPosition()[0];
             int y = this->Interactor->GetEventPosition()[1];
             cout << x<<" " << y<<endl;
+            //get the renderer that was clicked on by the mouse.
             vtkRenderer* renderer = this->Interactor->FindPokedRenderer(x, y);
+            //get the actor displayed from the renderer
+            setSelectedActor(renderer);
+            //pick the object that was clicked on by the mouse
             this->Interactor->GetPicker()->Pick(x, y, 0, renderer);
             double pickedPoint[3];
-            cout << pickedPoint[0] << " " << pickedPoint[1] << " " << pickedPoint[2] << endl;
+            //retrieves the 3D position where the mouse was clicked in the rendering window 
             this->Interactor->GetPicker()->GetPickPosition(pickedPoint);
-            setSelectedActor();
+            //check if an actor was selected
             if (SelectedActor)
             {
                 SelectedActor->SetDragable(true);
@@ -61,40 +67,22 @@ namespace {
                 /*vtkNew <vtkTransform> transform;
                 transform->Translate(pickedPoint);
                 SelectedActor->SetUserTransform(transform);*/
+                // saves the current position of the actor before it is moved.
                 LastPosition[0] = pickedPoint[0];
                 LastPosition[1] = pickedPoint[1];
                 LastPosition[2] = pickedPoint[2];
-                cout << LastPosition[0] << " " << LastPosition[1] << " " << LastPosition[2] << " ";
+                cout << LastPosition[0] << " " << LastPosition[1] << " " << LastPosition[2] << " "<<endl;
+                // sets the new position of the actor to the picked point, which will cause it to move to that location.
                 SelectedActor->SetPosition(pickedPoint);
-
             }
-
             // Forward events
             vtkInteractorStyleTrackballCamera::OnLeftButtonDown();
         }
-        virtual void OnLeftButtonUp() override
-        {
-            if (SelectedActor) {
-                // Save the new position of the selected actor
-                double newPosition[3];
-                SelectedActor->GetPosition(newPosition);
-                LastPosition[0] = newPosition[0];
-                LastPosition[1] = newPosition[1];
-                LastPosition[2] = newPosition[2];
-
-                // Reset the actor's properties
-                SelectedActor->GetProperty()->SetColor(1, 1, 1);
-                SelectedActor->SetDragable(false);
-                SelectedActor->SetPickable(true);
-                SelectedActor = nullptr;
-            }
-
-            // Forward the event to the parent class
-            vtkInteractorStyleTrackballCamera::OnLeftButtonUp();
-        }
-        void setSelectedActor() {
+        void setSelectedActor(vtkRenderer* renderer) {
         // safely cast the vtkProp object returned by GetLastProp() to an vtkActor object
-            SelectedActor = vtkActor::SafeDownCast(this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->GetActors()->GetLastProp());
+            SelectedActor =renderer->GetActors()->GetLastActor();
+
+               //vtkActor::SafeDownCast(this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->GetActors()->GetLastProp());
         }
         void setSelectedPolyData() {
             polyData = vtkPolyData::SafeDownCast(SelectedActor->GetMapper()->GetInputDataObject(0, 0));
@@ -107,13 +95,20 @@ namespace {
     };
     vtkStandardNewMacro(customMouseInteractorStyle);
 
+    vtkNew<vtkPoints> drawLine() {
+        vtkNew<vtkPoints> linepoints;
+        linepoints->InsertNextPoint(-0.5, -0.5, 0.0);
+        linepoints->InsertNextPoint(0.5, 0.5, 0.0);
+        return linepoints;
+    }
+
     vtkNew<vtkPoints> drawEllipse() {
         // Define ellipse parameters
         vtkNew<vtkPoints> ellipsepoints;
         double cx = 0.0; // Center X
         double cy = 0.0; // Center Y
-        double rx = 0.3; // X-axis radius (W: half - width)
-        double ry = 0.1; // Y-axis radius (H: half - height)
+        double rx = 0.5; // X-axis radius (W: half - width)
+        double ry = 0.2; // Y-axis radius (H: half - height)
         // Create points for ellipse vertices
         for (int i = 0; i <= 360; i++) {
             //convert from degree to radian
@@ -132,7 +127,7 @@ namespace {
         vtkNew<vtkPoints> regularPolygonPoints;
         //Pointi = ( R cos( 2πi / n ), R sin(2πi / n )),
         double regularPolygonNoOfSides = 6;
-        double regularPolygonRadius = 0.2;
+        double regularPolygonRadius = 0.5;
         double regularPolygonCenter = 0.0;
         for (int i = 0; i <= regularPolygonNoOfSides; i++) {
             //double theta = i * vtkMath::Pi() / 180;
@@ -154,7 +149,7 @@ namespace {
         //k is the number of petals or points on the rosette, controlling the number of "petals" or "points" in the curve.
         //t is the parameter that varies from 0 to 2*pi, controlling the position of the points on the curve.
         //theta is an additional parameter that can be adjusted to control the shape of the rosette. It is typically a constant value.
-        double starRadius = 0.2;
+        double starRadius = 0.5;
         // This scales the angle by a factor of 14,
         //which determines the number of points or vertices in the star shape. 
         //In this case, it generates a 14-gon shape by using 14 vertices, resulting in a star-like shape.
@@ -218,7 +213,6 @@ namespace {
     }
     vtkNew<vtkPoints>drawCircle() {
         vtkNew<vtkPoints> circlepoints;
-        vtkNew<vtkCellArray> circlelines;
 
         double angle_step = 2.0 * vtkMath::Pi() / 100.0;
         for (int i = 0; i <= 100; i++) {
@@ -226,15 +220,61 @@ namespace {
             double y = sin(i * angle_step);
             double z = 0.0;
             circlepoints->InsertNextPoint(x, y, z);
-            /*vtkIdType ids[2] = { i, (i + 1) % 100 };
-            circlelines->InsertNextCell(2, ids);*/
         }
-
             return circlepoints;
     }
 
     vtkNew<vtkPoints>drawArc() {
+        vtkNew<vtkPoints> arcpoints;
+        double center[3] = { -0.1 , -0.1 , 0.0 };
+        double radius = 0.5;
+        double startAngle = 0.0;
+        double endAngle = 90.0;
+        int numSegments = 20;
 
+        // Add the arc points
+        for (int i = 0; i <= numSegments; i++)
+        {
+            double angle = startAngle + (i / static_cast<double>(numSegments)) * (endAngle - startAngle);
+            double x = center[0] + radius * cos(angle * vtkMath::Pi() / 180.0);
+            double y = center[1] + radius * sin(angle * vtkMath::Pi() / 180.0);
+            double z = center[2];
+            arcpoints->InsertNextPoint(x, y, z);
+        }
+        return arcpoints;
+    }
+
+    vtkNew<vtkPoints> drawRectangle() {
+        vtkNew<vtkPoints> rectanglepoints;
+        rectanglepoints->InsertNextPoint(-0.5, -0.25, 0.0);
+        rectanglepoints->InsertNextPoint(0.5, -0.25, 0.0);
+        rectanglepoints->InsertNextPoint(0.5, 0.25, 0.0);
+        rectanglepoints->InsertNextPoint(-0.5, 0.25, 0.0);
+        rectanglepoints->InsertNextPoint(-0.5, -0.25, 0.0);
+        return rectanglepoints;
+    }
+
+    vtkNew<vtkPoints> drawTriangle() {
+        vtkNew<vtkPoints> trianglepoints;
+        trianglepoints->InsertNextPoint(-0.5, -0.25, 0.0);
+        trianglepoints->InsertNextPoint(0.5, -0.25, 0.0);
+        trianglepoints->InsertNextPoint(0.0, 0.5, 0.0);
+        trianglepoints->InsertNextPoint(-0.5, -0.25, 0.0);
+        //trianglepoints->InsertNextPoint(-0.5, 0.25, 0.0);
+        //trianglepoints->InsertNextPoint(-0.5, -0.25, 0.0);
+        return trianglepoints;
+    }
+
+    vtkNew<vtkPoints> drawRhombus() {
+        vtkNew<vtkPoints> rhombuspoints;
+
+        double a = 0.25; // side length
+        rhombuspoints->InsertNextPoint(-a, 0, 0); // lower left
+        rhombuspoints->InsertNextPoint(0, 2*a, 0); // upper left
+        rhombuspoints->InsertNextPoint(a, 0, 0); // upper right
+        rhombuspoints->InsertNextPoint(0, -2*a, 0); // lower right
+        rhombuspoints->InsertNextPoint(-a, 0, 0);
+        return rhombuspoints;
     }
 
     void selectShape(int index, vtkGenericOpenGLRenderWindow* window,vtkRenderer* renderer) {
@@ -244,37 +284,37 @@ namespace {
             vtkProp* lastActor = renderer->GetActors()->GetLastProp();
             renderer->RemoveActor(lastActor);
         }
-        if (index == 0) {//line
-
+        if (index == 1) {//line
+            points = drawLine();
         }
-        else if (index == 1) {//polyline
+        else if (index == 2) {//polyline
             points = drawPolyline();
         }
-        else if (index == 2) {//irregular polygon
+        else if (index == 3) {//irregular polygon
             points = drawIrregularPolygon();
         }
-        else if (index == 3) {//regular polygon
+        else if (index == 4) {//regular polygon
             points = drawRegularPolygon();
         }        
-        else if (index == 4) {//circle
+        else if (index == 5) {//circle
             points = drawCircle();
         }        
-        else if (index == 5) {//arc
-
+        else if (index == 6) {//arc
+            points = drawArc();
         }        
-        else if (index == 6) {//ellipse
+        else if (index == 7) {//ellipse
             points = drawEllipse();
         }
-        else if (index == 7) {//rectangle
-
+        else if (index == 8) {//rectangle
+            points = drawRectangle();
         }
-        else if (index == 8) {//triangle
-
+        else if (index == 9) {//triangle
+            points = drawTriangle();
         }
-        else if (index == 9) {//rhombus
-
+        else if (index == 10) {//rhombus
+            points = drawRhombus();
         }
-        else if (index == 10) {//star
+        else if (index == 11) {//star
             points = drawStar();
         }
         // Create polyline to connect those points using lines
@@ -330,7 +370,9 @@ int main(int argc, char** argv)
     layoutContainer.setLayout(dockLayout);
     controlDock.setWidget(&layoutContainer);
 
-    QComboBox shapesComboBox ;
+    //QComboBox* shapesComboBoxparent ;
+    QComboBox shapesComboBox;
+    shapesComboBox.addItem(QApplication::tr("Select Shape"));
     shapesComboBox.addItem(QApplication::tr("Line"));
     shapesComboBox.addItem(QApplication::tr("Polyline"));
     shapesComboBox.addItem(QApplication::tr("Irregular Polygon"));
@@ -342,6 +384,8 @@ int main(int argc, char** argv)
     shapesComboBox.addItem(QApplication::tr("Triangle"));
     shapesComboBox.addItem(QApplication::tr("Rhombus"));
     shapesComboBox.addItem(QApplication::tr("Star"));
+    shapesComboBox.setItemData(0, QVariant(0), Qt::UserRole - 1);
+
     dockLayout->addWidget(&shapesComboBox, 1, Qt::AlignTop);
 
      //render area
