@@ -9,6 +9,7 @@
 #include <vtkSphereSource.h>
 #include <vtkNew.h>
 #include <vtkInteractorStyleTrackballCamera.h>
+#include <vtkInteractorStyleTrackballActor.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkLineSource.h>
 #include <vtkPointPicker.h>
@@ -18,6 +19,7 @@
 #include <vtkPolyDataMapper.h>
 #include <vtkPolyLine.h>
 #include <vtkTransform.h>
+#include <vtkPropPicker.h>
 
 #include <QApplication>
 #include <QDockWidget>
@@ -37,63 +39,128 @@
 using namespace std;
 
 namespace {
-    // Define interaction style
-    class customMouseInteractorStyle : public vtkInteractorStyleTrackballCamera
-    {
-    public:
-        static customMouseInteractorStyle* New();
-        vtkTypeMacro(customMouseInteractorStyle, vtkInteractorStyleTrackballCamera);
+    //// Define interaction style
+    //class customMouseInteractorStyle : public vtkInteractorStyleTrackballCamera
+    //{
+    //public:
+    //    static customMouseInteractorStyle* New();
+    //    vtkTypeMacro(customMouseInteractorStyle, vtkInteractorStyleTrackballCamera);
 
-        virtual void OnLeftButtonDown() override
-        {
-            //get the x and y coordinates of the mouse click.
-            int x = this->Interactor->GetEventPosition()[0];
-            int y = this->Interactor->GetEventPosition()[1];
-            cout << x<<" " << y<<endl;
-            //get the renderer that was clicked on by the mouse.
-            vtkRenderer* renderer = this->Interactor->FindPokedRenderer(x, y);
-            //get the actor displayed from the renderer
-            setSelectedActor(renderer);
-            //pick the object that was clicked on by the mouse
-            this->Interactor->GetPicker()->Pick(x, y, 0, renderer);
-            double pickedPoint[3];
-            //retrieves the 3D position where the mouse was clicked in the rendering window 
-            this->Interactor->GetPicker()->GetPickPosition(pickedPoint);
-            //check if an actor was selected
-            if (SelectedActor)
-            {
-                SelectedActor->SetDragable(true);
-                SelectedActor->SetPickable(false);
-                /*vtkNew <vtkTransform> transform;
-                transform->Translate(pickedPoint);
-                SelectedActor->SetUserTransform(transform);*/
-                // saves the current position of the actor before it is moved.
-                LastPosition[0] = pickedPoint[0];
-                LastPosition[1] = pickedPoint[1];
-                LastPosition[2] = pickedPoint[2];
-                cout << LastPosition[0] << " " << LastPosition[1] << " " << LastPosition[2] << " "<<endl;
-                // sets the new position of the actor to the picked point, which will cause it to move to that location.
-                SelectedActor->SetPosition(pickedPoint);
-            }
-            // Forward events
-            vtkInteractorStyleTrackballCamera::OnLeftButtonDown();
-        }
-        void setSelectedActor(vtkRenderer* renderer) {
-        // safely cast the vtkProp object returned by GetLastProp() to an vtkActor object
-            SelectedActor =renderer->GetActors()->GetLastActor();
+    //    virtual void OnLeftButtonDown() override
+    //    {
+    //        //get the x and y coordinates of the mouse click.
+    //        int x = this->Interactor->GetEventPosition()[0];
+    //        int y = this->Interactor->GetEventPosition()[1];
+    //        //get the renderer that was clicked on by the mouse.
+    //        vtkRenderer* renderer = this->Interactor->FindPokedRenderer(x, y);
+    //        //get the actor displayed from the renderer
+    //        setSelectedActor(renderer);
+    //        //pick the object that was clicked on by the mouse
+    //        this->Interactor->GetPicker()->Pick(x, y, 0, renderer);
+    //        double pickedPoint[3];
+    //        //retrieves the 3D position where the mouse was clicked in the rendering window 
+    //        this->Interactor->GetPicker()->GetPickPosition(pickedPoint);
+    //        //check if an actor was selected
+    //        if (SelectedActor)
+    //        {
+    //            SelectedActor->SetDragable(true);
+    //            SelectedActor->SetPickable(false);
+    //            // Create a transform and set the shearing coefficients
+    //            vtkNew<vtkTransform> transform;
+    //            vtkNew < vtkMatrix4x4> matrix;
+    //            matrix->Identity();
+    //            matrix->SetElement(0, 1, 0.5);
 
-               //vtkActor::SafeDownCast(this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->GetActors()->GetLastProp());
-        }
-        void setSelectedPolyData() {
-            polyData = vtkPolyData::SafeDownCast(SelectedActor->GetMapper()->GetInputDataObject(0, 0));
-        }
+    //            transform->SetMatrix(matrix);
+    //            // Apply the transform to the actor
+    //            SelectedActor->SetUserTransform(transform);
+    //            // saves the current position of the actor before it is moved.
+    //            LastPosition[0] = pickedPoint[0];
+    //            LastPosition[1] = pickedPoint[1];
+    //            LastPosition[2] = pickedPoint[2];
+    //            // sets the new position of the actor to the picked point, which will cause it to move to that location.
+    //            SelectedActor->SetPosition(pickedPoint);
+    //        }
+    //        // Forward events
+    //        vtkInteractorStyleTrackballCamera::OnLeftButtonDown();
+    //    }
+    //    void setSelectedActor(vtkRenderer* renderer) {
+    //    // safely cast the vtkProp object returned by GetLastProp() to an vtkActor object
+    //        SelectedActor =renderer->GetActors()->GetLastActor();
 
-    private:
-        double LastPosition[3];
-        vtkActor* SelectedActor;
-        vtkPolyData* polyData;
-    };
-    vtkStandardNewMacro(customMouseInteractorStyle);
+    //           //vtkActor::SafeDownCast(this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->GetActors()->GetLastProp());
+    //    }
+    //    void setSelectedPolyData() {
+    //        polyData = vtkPolyData::SafeDownCast(SelectedActor->GetMapper()->GetInputDataObject(0, 0));
+    //    }
+
+    //private:
+    //    double LastPosition[3];
+    //    vtkActor* SelectedActor;
+    //    vtkPolyData* polyData;
+    //};
+    //vtkStandardNewMacro(customMouseInteractorStyle);
+    
+    
+    //class ScalingInteractorStyle : public vtkInteractorStyleTrackballActor
+    //{
+    //public:
+    //    static ScalingInteractorStyle* New();
+    //    vtkTypeMacro(ScalingInteractorStyle, vtkInteractorStyleTrackballActor);
+
+    //    virtual void OnMouseWheelForward() override
+    //    {
+    //        ScaleActor(1.1);
+    //        vtkInteractorStyleTrackballActor::OnMouseWheelForward();
+    //    }
+
+    //    virtual void OnMouseWheelBackward() override
+    //    {
+    //        ScaleActor(0.9);
+    //        vtkInteractorStyleTrackballActor::OnMouseWheelBackward();
+    //    }
+
+    //protected:
+    //    vtkSmartPointer<vtkActor> SelectedActor;
+
+    //    void ScaleActor(double factor)
+    //    {
+    //        // Get the prop picker
+    //        vtkNew<vtkPropPicker> picker;
+    //        int x = this->Interactor->GetEventPosition()[0];
+    //        int y = this->Interactor->GetEventPosition()[1];
+    //        this->CurrentRenderer->SetDisplayPoint(x, y, 0.0);
+    //        this->CurrentRenderer->PickProp(x, y); 
+    //        picker->PickProp(x, y, this->CurrentRenderer);
+
+    //        // Get the selected actor
+    //        vtkProp* prop = picker->GetActor();
+    //        if (prop)
+    //        {
+    //            this->SelectedActor = vtkActor::SafeDownCast(prop);
+
+    //            // Get the current scale of the actor
+    //            double currentScale[3];
+    //            this->SelectedActor->GetScale(currentScale);
+
+    //            // Compute the new scale based on the scroll wheel factor
+    //            double newScale[3];
+    //            newScale[0] = currentScale[0] * factor;
+    //            newScale[1] = currentScale[1] * factor;
+    //            newScale[2] = currentScale[2] * factor;
+
+    //            // Apply the new scale to the actor
+    //            vtkSmartPointer<vtkTransform> transform = vtkSmartPointer<vtkTransform>::New();
+    //            transform->Scale(newScale);
+    //            this->SelectedActor->SetUserTransform(transform);
+    //        }
+    //    }
+
+    //};
+
+    //vtkStandardNewMacro(ScalingInteractorStyle);
+
+
 
     vtkNew<vtkPoints> drawLine() {
         vtkNew<vtkPoints> linepoints;
@@ -107,8 +174,8 @@ namespace {
         vtkNew<vtkPoints> ellipsepoints;
         double cx = 0.0; // Center X
         double cy = 0.0; // Center Y
-        double rx = 0.5; // X-axis radius (W: half - width)
-        double ry = 0.2; // Y-axis radius (H: half - height)
+        double rx = 0.3; // X-axis radius (W: half - width)
+        double ry = 0.1; // Y-axis radius (H: half - height)
         // Create points for ellipse vertices
         for (int i = 0; i <= 360; i++) {
             //convert from degree to radian
@@ -246,20 +313,20 @@ namespace {
 
     vtkNew<vtkPoints> drawRectangle() {
         vtkNew<vtkPoints> rectanglepoints;
-        rectanglepoints->InsertNextPoint(-0.5, -0.25, 0.0);
-        rectanglepoints->InsertNextPoint(0.5, -0.25, 0.0);
-        rectanglepoints->InsertNextPoint(0.5, 0.25, 0.0);
-        rectanglepoints->InsertNextPoint(-0.5, 0.25, 0.0);
-        rectanglepoints->InsertNextPoint(-0.5, -0.25, 0.0);
+        rectanglepoints->InsertNextPoint(-0.2, -0.1, 0.0);
+        rectanglepoints->InsertNextPoint(0.2, -0.1, 0.0);
+        rectanglepoints->InsertNextPoint(0.2, 0.1, 0.0);
+        rectanglepoints->InsertNextPoint(-0.2, 0.1, 0.0);
+        rectanglepoints->InsertNextPoint(-0.2, -0.1, 0.0);
         return rectanglepoints;
     }
 
     vtkNew<vtkPoints> drawTriangle() {
         vtkNew<vtkPoints> trianglepoints;
-        trianglepoints->InsertNextPoint(-0.5, -0.25, 0.0);
-        trianglepoints->InsertNextPoint(0.5, -0.25, 0.0);
-        trianglepoints->InsertNextPoint(0.0, 0.5, 0.0);
-        trianglepoints->InsertNextPoint(-0.5, -0.25, 0.0);
+        trianglepoints->InsertNextPoint(-0.2, -0.1, 0.0);
+        trianglepoints->InsertNextPoint(0.2, -0.1, 0.0);
+        trianglepoints->InsertNextPoint(0.0, 0.1, 0.0);
+        trianglepoints->InsertNextPoint(-0.2, -0.1, 0.0);
         //trianglepoints->InsertNextPoint(-0.5, 0.25, 0.0);
         //trianglepoints->InsertNextPoint(-0.5, -0.25, 0.0);
         return trianglepoints;
@@ -345,6 +412,37 @@ namespace {
         renderer->AddActor(Actor);
         window->Render();
     }
+
+    void deleteSelectedShape(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
+        int numActors = renderer->GetActors()->GetNumberOfItems();
+        if (numActors > 0) {
+            vtkProp* lastActor = renderer->GetActors()->GetLastProp();
+            renderer->RemoveActor(lastActor);
+            window->Render();
+        }
+    }
+    void applyShear(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
+        vtkProp* prop = renderer->GetActors()->GetLastProp();
+        vtkActor* actor = dynamic_cast<vtkActor*>(prop);
+
+        vtkNew<vtkTransform> transform;
+        double elements[16] = { 1.0, 0.0, 0.0, 0.0,
+                       0.0, 1.0, 0.0, 0.0,
+                       0.0, 0.0, 1.0, 0.0,
+                       1.0, 2.0, 3.0, 1.0 };
+
+        // Set the shearing matrix in the transform
+        transform->SetMatrix(elements);
+        if (actor != nullptr) {
+            // Set the actor's user transform to be the shearing transform.
+            actor->SetUserMatrix(transform->GetMatrix());
+            actor->Modified();
+
+            // Render the scene to see the shearing effect applied.
+            renderer->Render();
+        }
+
+    }
 } // namespace
 
 int main(int argc, char** argv)
@@ -388,6 +486,12 @@ int main(int argc, char** argv)
 
     dockLayout->addWidget(&shapesComboBox, 1, Qt::AlignTop);
 
+    QPushButton deleteButton("Delete Selected Shape");
+    dockLayout->addWidget(&deleteButton, 1, Qt::AlignTop);
+
+    QPushButton shearButton("Apply shear");
+    dockLayout->addWidget(&shearButton, 1, Qt::AlignTop);
+
      //render area
     QPointer<QVTKOpenGLNativeWidget> vtkRenderWidget = new QVTKOpenGLNativeWidget();
     mainWindow.setCentralWidget(vtkRenderWidget);
@@ -406,7 +510,9 @@ int main(int argc, char** argv)
     window->SetInteractor(vtkRenderWidget->interactor());
     window->GetInteractor()->SetPicker(pointPicker);
 
-    vtkNew<customMouseInteractorStyle> style;
+    vtkNew<vtkInteractorStyleTrackballActor> style;
+
+    //vtkNew<customMouseInteractorStyle> style;
     //style->setLineSource(linesource);
     //style->setVTKActor(lineactor);
 
@@ -415,6 +521,14 @@ int main(int argc, char** argv)
        QObject::connect(&shapesComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [&](int index) {
           ::selectShape(index,window,renderer);
           });
+
+       // connect button to slot
+       QObject::connect(&deleteButton, &QPushButton::clicked, [&]() {
+           ::deleteSelectedShape(window, renderer);
+           });
+       QObject::connect(&shearButton, &QPushButton::clicked, [&]() {
+           ::applyShear(window, renderer);
+           });
     window->Render();
     mainWindow.show();
 
