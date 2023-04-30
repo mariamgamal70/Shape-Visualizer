@@ -39,68 +39,6 @@
 using namespace std;
 
 namespace {
-    //// Define interaction style
-    //class customMouseInteractorStyle : public vtkInteractorStyleTrackballCamera
-    //{
-    //public:
-    //    static customMouseInteractorStyle* New();
-    //    vtkTypeMacro(customMouseInteractorStyle, vtkInteractorStyleTrackballCamera);
-
-    //    virtual void OnLeftButtonDown() override
-    //    {
-    //        //get the x and y coordinates of the mouse click.
-    //        int x = this->Interactor->GetEventPosition()[0];
-    //        int y = this->Interactor->GetEventPosition()[1];
-    //        //get the renderer that was clicked on by the mouse.
-    //        vtkRenderer* renderer = this->Interactor->FindPokedRenderer(x, y);
-    //        //get the actor displayed from the renderer
-    //        setSelectedActor(renderer);
-    //        //pick the object that was clicked on by the mouse
-    //        this->Interactor->GetPicker()->Pick(x, y, 0, renderer);
-    //        double pickedPoint[3];
-    //        //retrieves the 3D position where the mouse was clicked in the rendering window 
-    //        this->Interactor->GetPicker()->GetPickPosition(pickedPoint);
-    //        //check if an actor was selected
-    //        if (SelectedActor)
-    //        {
-    //            SelectedActor->SetDragable(true);
-    //            SelectedActor->SetPickable(false);
-    //            // Create a transform and set the shearing coefficients
-    //            vtkNew<vtkTransform> transform;
-    //            vtkNew < vtkMatrix4x4> matrix;
-    //            matrix->Identity();
-    //            matrix->SetElement(0, 1, 0.5);
-
-    //            transform->SetMatrix(matrix);
-    //            // Apply the transform to the actor
-    //            SelectedActor->SetUserTransform(transform);
-    //            // saves the current position of the actor before it is moved.
-    //            LastPosition[0] = pickedPoint[0];
-    //            LastPosition[1] = pickedPoint[1];
-    //            LastPosition[2] = pickedPoint[2];
-    //            // sets the new position of the actor to the picked point, which will cause it to move to that location.
-    //            SelectedActor->SetPosition(pickedPoint);
-    //        }
-    //        // Forward events
-    //        vtkInteractorStyleTrackballCamera::OnLeftButtonDown();
-    //    }
-    //    void setSelectedActor(vtkRenderer* renderer) {
-    //    // safely cast the vtkProp object returned by GetLastProp() to an vtkActor object
-    //        SelectedActor =renderer->GetActors()->GetLastActor();
-
-    //           //vtkActor::SafeDownCast(this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->GetActors()->GetLastProp());
-    //    }
-    //    void setSelectedPolyData() {
-    //        polyData = vtkPolyData::SafeDownCast(SelectedActor->GetMapper()->GetInputDataObject(0, 0));
-    //    }
-
-    //private:
-    //    double LastPosition[3];
-    //    vtkActor* SelectedActor;
-    //    vtkPolyData* polyData;
-    //};
-    //vtkStandardNewMacro(customMouseInteractorStyle);
-    
     
     class ScalingInteractorStyle : public vtkInteractorStyleTrackballActor
     {
@@ -150,8 +88,8 @@ namespace {
 
     vtkNew<vtkPoints> drawLine() {
         vtkNew<vtkPoints> linepoints;
-        linepoints->InsertNextPoint(-0.5, -0.5, 0.0);
-        linepoints->InsertNextPoint(0.5, 0.5, 0.0);
+        linepoints->InsertNextPoint(-0.1, -0.1, 0.0);
+        linepoints->InsertNextPoint(0.1, 0.1, 0.0);
         return linepoints;
     }
 
@@ -160,7 +98,7 @@ namespace {
         vtkNew<vtkPoints> ellipsepoints;
         double cx = 0.0; // Center X
         double cy = 0.0; // Center Y
-        double rx = 0.3; // X-axis radius (W: half - width)
+        double rx = 0.2; // X-axis radius (W: half - width)
         double ry = 0.1; // Y-axis radius (H: half - height)
         // Create points for ellipse vertices
         for (int i = 0; i <= 360; i++) {
@@ -181,7 +119,7 @@ namespace {
         vtkNew<vtkPoints> regularPolygonPoints;
         //Pointi = ( R cos( 2πi / n ), R sin(2πi / n )),
         double regularPolygonNoOfSides = 6;
-        double regularPolygonRadius = 0.5;
+        double regularPolygonRadius = 0.1;
         double regularPolygonCenter = 0.0;
         for (int i = 0; i <= regularPolygonNoOfSides; i++) {
             //double theta = i * vtkMath::Pi() / 180;
@@ -204,7 +142,7 @@ namespace {
         //k is the number of petals or points on the rosette, controlling the number of "petals" or "points" in the curve.
         //t is the parameter that varies from 0 to 2*pi, controlling the position of the points on the curve.
         //theta is an additional parameter that can be adjusted to control the shape of the rosette. It is typically a constant value.
-        double starRadius = 0.5;
+        double starRadius = 0.1;
         // This scales the angle by a factor of 14,
         //which determines the number of points or vertices in the star shape. 
         //In this case, it generates a 14-gon shape by using 14 vertices, resulting in a star-like shape.
@@ -230,11 +168,11 @@ namespace {
 
     vtkNew<vtkPoints>drawPolyline() {
         // Create five points.
-        double origin[3] = { -0.2, 0.5, 0.0 };
+        double origin[3] = { -0.1, 0.3, 0.0 };
         double p0[3] = { 0.0, 0.0, 0.0 };
         double p1[3] = { 0.1, 0.0, 0.0 };
-        double p2[3] = { 0.2, -0.4, 0.0 };
-        double p3[3] = { 0.3, 0.0, 0.0 };
+        double p2[3] = { 0.2, -0.3, 0.0 };
+        double p3[3] = { 0.2, 0.0, 0.0 };
 
         // Create a vtkPoints object and store the points in it
         vtkNew<vtkPoints> points;
@@ -285,10 +223,10 @@ namespace {
     vtkNew<vtkPoints>drawArc() {
         vtkNew<vtkPoints> arcpoints;
         double center[3] = { -0.1 , -0.1 , 0.0 };
-        double radius = 0.5;
+        double radius = 0.3;
         double startAngle = 0.0;
         double endAngle = 90.0;
-        int numSegments = 20;
+        int numSegments = 30;
 
         // Add the arc points
         for (int i = 0; i <= numSegments; i++)
@@ -326,7 +264,7 @@ namespace {
     vtkNew<vtkPoints> drawRhombus() {
         vtkNew<vtkPoints> rhombuspoints;
 
-        double a = 0.25; // side length
+        double a = 0.1; // side length
         rhombuspoints->InsertNextPoint(-a, 0, 0); // lower left
         rhombuspoints->InsertNextPoint(0, 2*a, 0); // upper left
         rhombuspoints->InsertNextPoint(a, 0, 0); // upper right
@@ -413,31 +351,6 @@ namespace {
         }
     }
 
-    void applyShear(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
-        double shearFactorX = QInputDialog::getDouble(NULL, "Enter shear factor X", "shear factor X", 0, -1000, 1000, 3);
-        double shearFactorY = QInputDialog::getDouble(NULL, "Enter shear factor Y", "shear factor Y", 0, -1000, 1000, 3);
-
-        vtkProp* prop = renderer->GetActors()->GetLastProp();
-        vtkActor* actor = dynamic_cast<vtkActor*>(prop);
-
-        vtkNew<vtkTransform> transform;
-        double shearElements[16] = { 1.0, shearFactorX, 0.0, 0.0,
-                                    shearFactorY, 1.0, 0.0, 0.0,
-                                   0.0, 0.0, 1.0, 0.0,
-                                   0.0, 0.0, 0.0, 1.0 };
-
-        // Set the shearing matrix in the transform
-        transform->SetMatrix(shearElements);
-        if (actor != nullptr) {
-            // Set the actor's user transform to be the shearing transform.
-            actor->SetUserMatrix(transform->GetMatrix());
-            actor->Modified();
-
-            // Render the scene to see the shearing effect applied.
-            window->Render();
-        }
-    }
-
     void applyTranslation(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
         double x = QInputDialog::getDouble(NULL, "Enter x translation", "x translation", 0, -1000, 1000, 3);
         double y = QInputDialog::getDouble(NULL, "Enter y translation", "y translation", 0, -1000, 1000, 3);
@@ -507,6 +420,7 @@ namespace {
         vtkPolyData* data = vtkPolyData::SafeDownCast(mapper->GetInput());
         vtkPoints* points = data->GetPoints();
         vtkIdType numPoints = points->GetNumberOfPoints();
+        //(Qx, Qy) = (SxPx, SyPy), multiply each old point p by the scaling factor
         for (vtkIdType i = 0; i < numPoints; i++) {
             double* pt = points->GetPoint(i);
             pt[0] *= scalingfactor;
@@ -517,6 +431,28 @@ namespace {
         window->Render();
     }
 
+    void applyShear(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
+            double shearFactorX = QInputDialog::getDouble(NULL, "Enter shear factor X", "shear factor X", 0, -1000, 1000, 3);
+            double shearFactorY = QInputDialog::getDouble(NULL, "Enter shear factor Y", "shear factor Y", 0, -1000, 1000, 3);
+
+            vtkProp* prop = renderer->GetActors()->GetLastProp();
+            vtkActor* actor = dynamic_cast<vtkActor*>(prop);
+
+            vtkNew<vtkTransform> transform;
+            double shearElements[16] = { 1.0, shearFactorX, 0.0, 0.0,
+                                        shearFactorY, 1.0, 0.0, 0.0,
+                                       0.0, 0.0, 1.0, 0.0,
+                                       0.0, 0.0, 0.0, 1.0 };
+            // Set the shearing matrix in the transform
+            transform->SetMatrix(shearElements);
+            if (actor != nullptr) {
+                // Set the actor's user transform to be the shearing transform.
+                actor->SetUserMatrix(transform->GetMatrix());
+                actor->Modified();
+                // Render the scene to see the shearing effect applied.
+                window->Render();
+            }
+        }
 } // namespace
 
 int main(int argc, char** argv)
@@ -563,13 +499,13 @@ int main(int argc, char** argv)
     QPushButton deleteButton("Delete Selected Shape");
     dockLayout->addWidget(&deleteButton, 1, Qt::AlignTop);
 
-    QPushButton translateButton("Apply Translation");
+    QPushButton translateButton("Apply Translate");
     dockLayout->addWidget(&translateButton, 1, Qt::AlignTop);
     
-    QPushButton rotateButton("Apply rotating");
+    QPushButton rotateButton("Apply Rotate");
     dockLayout->addWidget(&rotateButton, 1, Qt::AlignTop);
 
-    QPushButton scaleButton("Apply rotating");
+    QPushButton scaleButton("Apply Scale");
     dockLayout->addWidget(&scaleButton, 1, Qt::AlignTop);
 
     QPushButton shearButton("Apply shearing");
