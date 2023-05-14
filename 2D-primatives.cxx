@@ -20,6 +20,8 @@
 #include <vtkPolyLine.h>
 #include <vtkTransform.h>
 #include <vtkPropPicker.h>
+#include <vtkCollectionIterator.h>
+#include <vtkStringArray.h>
 
 #include <QApplication>
 #include <QDockWidget>
@@ -30,15 +32,43 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QInputDialog>
+#include <QFileDialog>
 #include <QComboBox>
 #include <QStandardItem>
+#include <QColorDialog>
 
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <fstream>
 using namespace std;
+vtkNew<vtkStringArray> nameArray;
 
 namespace {
+    class DeleteActorCallback : public vtkCommand
+    {
+    public:
+        static DeleteActorCallback* New()
+        {
+            return new DeleteActorCallback;
+        }
+
+        virtual void Execute(vtkObject* caller, unsigned long eventId, void* callData)
+        {
+            cout << "hello";
+            // Get the picker and the renderer
+            vtkPropPicker* picker = vtkPropPicker::SafeDownCast(caller);
+            vtkRenderer* renderer = picker->GetRenderer();
+
+            // Get the actor that was picked and remove it from the renderer
+            vtkActor* actor = picker->GetActor();
+            renderer->RemoveActor(actor);
+
+            // Update the render window
+            vtkRenderWindow* renderWindow = renderer->GetRenderWindow();
+            renderWindow->Render();
+        }
+    };
     
     class ScalingInteractorStyle : public vtkInteractorStyleTrackballActor
     {
@@ -86,20 +116,20 @@ namespace {
     };
     vtkStandardNewMacro(ScalingInteractorStyle);
 
-    vtkNew<vtkPoints> drawLine() {
+    vtkNew<vtkPoints> drawLine(double px1,double py1,double px2,double py2) {
         vtkNew<vtkPoints> linepoints;
-        linepoints->InsertNextPoint(-0.1, -0.1, 0.0);
-        linepoints->InsertNextPoint(0.1, 0.1, 0.0);
+        linepoints->InsertNextPoint(px1, py1, 0.0);
+        linepoints->InsertNextPoint(px2, py2, 0.0);
         return linepoints;
     }
 
-    vtkNew<vtkPoints> drawEllipse() {
+    vtkNew<vtkPoints> drawEllipse(double cx, double cy, double rx, double ry ) {
         // Define ellipse parameters
         vtkNew<vtkPoints> ellipsepoints;
-        double cx = 0.0; // Center X
+        /*double cx = 0.0; // Center X
         double cy = 0.0; // Center Y
         double rx = 0.2; // X-axis radius (W: half - width)
-        double ry = 0.1; // Y-axis radius (H: half - height)
+        double ry = 0.1*/; // Y-axis radius (H: half - height)
         // Create points for ellipse vertices
         for (int i = 0; i <= 360; i++) {
             //convert from degree to radian
@@ -114,13 +144,13 @@ namespace {
         return ellipsepoints;
     }
 
-    vtkNew<vtkPoints> drawRegularPolygon() {
+    vtkNew<vtkPoints> drawRegularPolygon(int number_of_sides, double Polygon_raduis, double polygon_center) {
         // Create points for regular polygon vertices
         vtkNew<vtkPoints> regularPolygonPoints;
         //Pointi = ( R cos( 2πi / n ), R sin(2πi / n )),
-        double regularPolygonNoOfSides = 6;
-        double regularPolygonRadius = 0.1;
-        double regularPolygonCenter = 0.0;
+        int regularPolygonNoOfSides = number_of_sides;
+        double regularPolygonRadius = Polygon_raduis;
+        double regularPolygonCenter = polygon_center;
         for (int i = 0; i <= regularPolygonNoOfSides; i++) {
             //double theta = i * vtkMath::Pi() / 180;
             //x= R cos( 2πi / n )
@@ -132,7 +162,7 @@ namespace {
         return regularPolygonPoints;
     }
 
-    vtkNew<vtkPoints> drawStar() {
+    vtkNew<vtkPoints> drawStar(double radius) {
         // Create points for regular polygon vertices
         vtkNew<vtkPoints> starPoints;
         //rosette general equation
@@ -142,7 +172,7 @@ namespace {
         //k is the number of petals or points on the rosette, controlling the number of "petals" or "points" in the curve.
         //t is the parameter that varies from 0 to 2*pi, controlling the position of the points on the curve.
         //theta is an additional parameter that can be adjusted to control the shape of the rosette. It is typically a constant value.
-        double starRadius = 0.1;
+        double starRadius = radius;
         // This scales the angle by a factor of 14,
         //which determines the number of points or vertices in the star shape. 
         //In this case, it generates a 14-gon shape by using 14 vertices, resulting in a star-like shape.
@@ -166,13 +196,13 @@ namespace {
         return starPoints;
     }
 
-    vtkNew<vtkPoints>drawPolyline() {
-        // Create five points.
-        double origin[3] = { -0.1, 0.3, 0.0 };
-        double p0[3] = { 0.0, 0.0, 0.0 };
-        double p1[3] = { 0.1, 0.0, 0.0 };
-        double p2[3] = { 0.2, -0.3, 0.0 };
-        double p3[3] = { 0.2, 0.0, 0.0 };
+    vtkNew<vtkPoints>drawPolyline(double PoriginX, double PoriginY,double px0,double py0,double px1,double py1,double px2,double py2, double px3, double py3) {
+       // Create five points.
+        double origin[3] = { PoriginX, PoriginY, 0.0 };
+        double p0[3] = { px0, py0, 0.0 };
+        double p1[3] = { px1, py1, 0.0 };
+        double p2[3] = { px2, py2, 0.0 };
+        double p3[3] = { px3, py3, 0.0 };
 
         // Create a vtkPoints object and store the points in it
         vtkNew<vtkPoints> points;
@@ -184,134 +214,197 @@ namespace {
         return points;
     }
 
-    vtkNew<vtkPoints>drawIrregularPolygon() {
+    vtkNew<vtkPoints>drawIrregularPolygon(double px0,double py0,double px1,double py1,double px2,double py2, double px3, double py3, double px4,double py4,double px5,double py5) {
         vtkNew<vtkPoints> irregularPolygonPoints;
         // Generate random coordinates for each vertex
-        srand(time(NULL));
-        double maxX = 0.5;
-        double maxY = 0.5;
 
-        irregularPolygonPoints->InsertNextPoint(0.0, 0.5, 0);
-        irregularPolygonPoints->InsertNextPoint(0.5, 0.2, 0);
-        irregularPolygonPoints->InsertNextPoint(0.3, -0.2, 0);
-        irregularPolygonPoints->InsertNextPoint(0.0, 0.0, 0);
-        irregularPolygonPoints->InsertNextPoint(-0.3, -0.3, 0);
-        irregularPolygonPoints->InsertNextPoint(-0.5, 0.3, 0);
+        irregularPolygonPoints->InsertNextPoint(px0, py0, 0);
+        irregularPolygonPoints->InsertNextPoint(px1, py1, 0);
+        irregularPolygonPoints->InsertNextPoint(px2, py2, 0);
+        irregularPolygonPoints->InsertNextPoint(px3, py3, 0);
+        irregularPolygonPoints->InsertNextPoint(px4, py4, 0);
+        irregularPolygonPoints->InsertNextPoint(px5, py5, 0);
         /* for (int i = 0; i < 6; i++) {
              double x = (double)rand() / RAND_MAX * maxX - maxX / 2;
              double y = (double)rand() / RAND_MAX * maxY - maxY / 2;
              irregularPolygonPoints->InsertNextPoint(x, y, 0.0);
          }*/
 
-        irregularPolygonPoints->InsertNextPoint(0.0, 0.5, 0);
+        irregularPolygonPoints->InsertNextPoint(px0, py0, 0);
         return irregularPolygonPoints;
     }
 
-    vtkNew<vtkPoints>drawCircle() {
+    vtkNew<vtkPoints>drawCircle(double radius) {
         vtkNew<vtkPoints> circlepoints;
 
         double angle_step = 2.0 * vtkMath::Pi() / 100.0;
         for (int i = 0; i <= 100; i++) {
-            double x = cos(i * angle_step);
-            double y = sin(i * angle_step);
+            double x = radius* cos(i * angle_step);
+            double y = radius* sin(i * angle_step);
             double z = 0.0;
             circlepoints->InsertNextPoint(x, y, z);
         }
             return circlepoints;
+
+			//vtkNew<vtkIntArray> identifiers;
+			//identifiers->SetName("Identifier");
+			//identifiers->InsertNextValue(1); // Set the identifier value to 1
+   //         circle->GetFieldData()->AddArray(identifiers);
     }
 
-    vtkNew<vtkPoints>drawArc() {
+    vtkNew<vtkPoints>drawArc(double centerX, double centerY, double radius, double startAngle, double endAngle ) {
         vtkNew<vtkPoints> arcpoints;
-        double center[3] = { -0.1 , -0.1 , 0.0 };
+        /*double center[3] = { -0.1 , -0.1 , 0.0 };
         double radius = 0.3;
         double startAngle = 0.0;
-        double endAngle = 90.0;
+        double endAngle = 90.0;*/
         int numSegments = 30;
 
         // Add the arc points
         for (int i = 0; i <= numSegments; i++)
         {
             double angle = startAngle + (i / static_cast<double>(numSegments)) * (endAngle - startAngle);
-            double x = center[0] + radius * cos(angle * vtkMath::Pi() / 180.0);
-            double y = center[1] + radius * sin(angle * vtkMath::Pi() / 180.0);
-            double z = center[2];
-            arcpoints->InsertNextPoint(x, y, z);
+            double x = centerX + radius * cos(angle * vtkMath::Pi() / 180.0);
+            double y = centerY + radius * sin(angle * vtkMath::Pi() / 180.0);
+           
+            arcpoints->InsertNextPoint(x, y, 0.0);
         }
         return arcpoints;
     }
 
-    vtkNew<vtkPoints> drawRectangle() {
+    vtkNew<vtkPoints> drawRectangle(double length,double width) {
         vtkNew<vtkPoints> rectanglepoints;
-        rectanglepoints->InsertNextPoint(-0.2, -0.1, 0.0);
-        rectanglepoints->InsertNextPoint(0.2, -0.1, 0.0);
-        rectanglepoints->InsertNextPoint(0.2, 0.1, 0.0);
-        rectanglepoints->InsertNextPoint(-0.2, 0.1, 0.0);
-        rectanglepoints->InsertNextPoint(-0.2, -0.1, 0.0);
+        rectanglepoints->InsertNextPoint(-length/2, -width/2, 0.0);
+        rectanglepoints->InsertNextPoint(length / 2, -width / 2, 0.0);
+        rectanglepoints->InsertNextPoint(length / 2, width / 2, 0.0);
+        rectanglepoints->InsertNextPoint(-length / 2, width / 2, 0.0);
+        rectanglepoints->InsertNextPoint(-length/2, -width/2, 0.0);
         return rectanglepoints;
     }
 
-    vtkNew<vtkPoints> drawTriangle() {
+    vtkNew<vtkPoints> drawTriangle(double p1x,double p1y,double p2x,double p2y,double p3x,double p3y) {
         vtkNew<vtkPoints> trianglepoints;
-        trianglepoints->InsertNextPoint(-0.2, -0.1, 0.0);
-        trianglepoints->InsertNextPoint(0.2, -0.1, 0.0);
-        trianglepoints->InsertNextPoint(0.0, 0.1, 0.0);
-        trianglepoints->InsertNextPoint(-0.2, -0.1, 0.0);
+        trianglepoints->InsertNextPoint(-p1x, -p1y, 0.0);
+        trianglepoints->InsertNextPoint(p2x, -p2y, 0.0);
+        trianglepoints->InsertNextPoint(p3x, p3y, 0.0);
+        trianglepoints->InsertNextPoint(-p1x, -p1y, 0.0);
         //trianglepoints->InsertNextPoint(-0.5, 0.25, 0.0);
         //trianglepoints->InsertNextPoint(-0.5, -0.25, 0.0);
         return trianglepoints;
     }
 
-    vtkNew<vtkPoints> drawRhombus() {
+    vtkNew<vtkPoints> drawRhombus(double sidelength) {
         vtkNew<vtkPoints> rhombuspoints;
 
         double a = 0.1; // side length
-        rhombuspoints->InsertNextPoint(-a, 0, 0); // lower left
-        rhombuspoints->InsertNextPoint(0, 2*a, 0); // upper left
-        rhombuspoints->InsertNextPoint(a, 0, 0); // upper right
-        rhombuspoints->InsertNextPoint(0, -2*a, 0); // lower right
-        rhombuspoints->InsertNextPoint(-a, 0, 0);
+        rhombuspoints->InsertNextPoint(-sidelength, 0, 0); // lower left
+        rhombuspoints->InsertNextPoint(0, 2* sidelength, 0); // upper left
+        rhombuspoints->InsertNextPoint(sidelength, 0, 0); // upper right
+        rhombuspoints->InsertNextPoint(0, -2* sidelength, 0); // lower right
+        rhombuspoints->InsertNextPoint(-sidelength, 0, 0);
         return rhombuspoints;
     }
 
+
     void selectShape(int index, vtkGenericOpenGLRenderWindow* window,vtkRenderer* renderer) {
         vtkNew<vtkPoints> points;
-        int numActors = renderer->GetActors()->GetNumberOfItems();
+        vtkNew<vtkActor> Actor;
+        /*int numActors = renderer->GetActors()->GetNumberOfItems();
         if (numActors > 0) {
             vtkProp* lastActor = renderer->GetActors()->GetLastProp();
             renderer->RemoveActor(lastActor);
-        }
+        }*/
+
         if (index == 1) {//line
-            points = drawLine();
+            double x1 = QInputDialog::getDouble(NULL, "Enter first coordinates", "x1 coordinate", 0, -1000, 1000, 2);
+            double y1 = QInputDialog::getDouble(NULL, "Enter first coordinates", "y1 coordinate", 0, -1000, 1000, 2);
+            double x2 = QInputDialog::getDouble(NULL, "Enter second coordinates", "x2 coordinate", 0, -1000, 1000, 2);
+            double y2 = QInputDialog::getDouble(NULL, "Enter second coordinates", "y2 coordinate", 0, -1000, 1000, 2);
+            //Actor->SetObjectName("line");
+            nameArray->InsertNextValue("line");
+            points = drawLine(x1,y1,x2,y2);
         }
         else if (index == 2) {//polyline
-            points = drawPolyline();
+            double originX = QInputDialog::getDouble(NULL, "Enter first coordinates", "x1 coordinate", 0, -1000, 1000, 2);
+            double originY = QInputDialog::getDouble(NULL, "Enter first coordinates", "y1 coordinate", 0, -1000, 1000, 2);
+            double x0 = QInputDialog::getDouble(NULL, "Enter second coordinates", "x2 coordinate", 0, -1000, 1000, 2);
+            double y0 = QInputDialog::getDouble(NULL, "Enter second coordinates", "y2 coordinate", 0, -1000, 1000, 2);
+            double x1 = QInputDialog::getDouble(NULL, "Enter third coordinates", "x3 coordinate", 0, -1000, 1000, 2);
+            double y1 = QInputDialog::getDouble(NULL, "Enter third coordinates", "y3 coordinate", 0, -1000, 1000, 2);
+            double x2 = QInputDialog::getDouble(NULL, "Enter fourth coordinates", "x4 coordinate", 0, -1000, 1000, 2);
+            double y2 = QInputDialog::getDouble(NULL, "Enter fourth coordinates", "y4 coordinate", 0, -1000, 1000, 2);
+            double x3 = QInputDialog::getDouble(NULL, "Enter fifth coordinates", "x5 coordinate", 0, -1000, 1000, 2);
+            double y3 = QInputDialog::getDouble(NULL, "Enter fifth coordinates", "y5 coordinate", 0, -1000, 1000, 2);
+            Actor->SetObjectName("polyline");
+            nameArray->InsertNextValue("polyline");
+            points = drawPolyline(originX, originY, x0, y0,x1,y1,x2,y2,x3,y3);
         }
         else if (index == 3) {//irregular polygon
-            points = drawIrregularPolygon();
+            double x0 = QInputDialog::getDouble(NULL, "Enter first coordinates", "x1 coordinate", 0, -1000, 1000, 2);
+            double y0 = QInputDialog::getDouble(NULL, "Enter first coordinates", "y1 coordinate", 0, -1000, 1000, 2);
+            double x1 = QInputDialog::getDouble(NULL, "Enter second coordinates", "x2 coordinate", 0, -1000, 1000, 2);
+            double y1 = QInputDialog::getDouble(NULL, "Enter second coordinates", "y2 coordinate", 0, -1000, 1000, 2);
+            double x2 = QInputDialog::getDouble(NULL, "Enter thrid coordinates", "x3 coordinate", 0, -1000, 1000, 2);
+            double y2 = QInputDialog::getDouble(NULL, "Enter third coordinates", "y3 coordinate", 0, -1000, 1000, 2);
+            double x3 = QInputDialog::getDouble(NULL, "Enter fourth coordinates", "x4 coordinate", 0, -1000, 1000, 2);
+            double y3 = QInputDialog::getDouble(NULL, "Enter fourth coordinates", "y4 coordinate", 0, -1000, 1000, 2);
+            double x4 = QInputDialog::getDouble(NULL, "Enter fifth coordinates", "x5 coordinate", 0, -1000, 1000, 2);
+            double y4 = QInputDialog::getDouble(NULL, "Enter fifth coordinates", "y5 coordinate", 0, -1000, 1000, 2);
+            double x5 = QInputDialog::getDouble(NULL, "Enter sixth coordinates", "x6 coordinate", 0, -1000, 1000, 2);
+            double y5 = QInputDialog::getDouble(NULL, "Enter sixth coordinates", "y6 coordinate", 0, -1000, 1000, 2);
+            Actor->SetObjectName("irregular polygon");
+            nameArray->InsertNextValue("irregular polygon");
+            points = drawIrregularPolygon(x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5);
         }
         else if (index == 4) {//regular polygon
-            points = drawRegularPolygon();
+            int number_of_sides = QInputDialog::getDouble(NULL, "Enter number of sides", "number of sides", 0, -1000, 1000, 2);
+            double Polygon_raduis = QInputDialog::getDouble(NULL, "Enter polygon raduis", "polygon raduis", 0, -1000, 1000, 2);
+            double polygon_center = QInputDialog::getDouble(NULL, "Enter polygon center", "polygon center", 0, -1000, 1000, 2);
+            Actor->SetObjectName("regular polygon");
+            nameArray->InsertNextValue("regular polygon");
+            points = drawRegularPolygon( number_of_sides, Polygon_raduis, polygon_center);
         }        
         else if (index == 5) {//circle
-            points = drawCircle();
+            double radius = QInputDialog::getDouble(NULL, "Enter radius ", "radius", 0, -1000, 1000, 2);
+            points = drawCircle(radius);
         }        
         else if (index == 6) {//arc
-            points = drawArc();
+			double centerX = QInputDialog::getDouble(NULL, "Enter point1", "point1", 0, -1000, 1000, 2);
+			double centerY = QInputDialog::getDouble(NULL, "Enter point2", "point2", 0, -1000, 1000, 2);
+			double radius = QInputDialog::getDouble(NULL, "Enter radius", "radius", 0, -1000, 1000, 2);
+            double startangle = QInputDialog::getDouble(NULL, "Enter start angle", "start angle", 0, -1000, 1000, 2);
+			double endAngle = QInputDialog::getDouble(NULL, "Enter end angle", "end angle", 0, -1000, 1000, 2);
+            points = drawArc(centerX, centerY, radius, startangle, endAngle );
         }        
         else if (index == 7) {//ellipse
-            points = drawEllipse();
+			double centerX = QInputDialog::getDouble(NULL, "Enter point1", "point1", 0, -1000, 1000, 2);
+			double centerY = QInputDialog::getDouble(NULL, "Enter point2", "point2", 0, -1000, 1000, 2);
+			double radiusA = QInputDialog::getDouble(NULL, "Enter radiusI", "radiusI", 0, -1000, 1000, 2);
+			double radiusB = QInputDialog::getDouble(NULL, "Enter radiusII", "radiusII", 0, -1000, 1000, 2);
+
+            points = drawEllipse(centerX, centerY, radiusA, radiusB );
         }
         else if (index == 8) {//rectangle
-            points = drawRectangle();
+            double length = QInputDialog::getDouble(NULL, "Enter length", "x1 coordinate", 0, -1000, 1000, 2);
+            double width = QInputDialog::getDouble(NULL, "Enter width", "y1 coordinate", 0, -1000, 1000, 2);
+            points = drawRectangle(length,width);
         }
         else if (index == 9) {//triangle
-            points = drawTriangle();
+            double p1x = QInputDialog::getDouble(NULL, "Enter point1", "x1 coordinate", 0, -1000, 1000, 2);
+            double p1y = QInputDialog::getDouble(NULL, "Enter point1", "y1 coordinate", 0, -1000, 1000, 2);
+            double p2x = QInputDialog::getDouble(NULL, "Enter point2", "x2 coordinate", 0, -1000, 1000, 2);
+            double p2y = QInputDialog::getDouble(NULL, "Enter point2", "y2 coordinate", 0, -1000, 1000, 2);
+            double p3x = QInputDialog::getDouble(NULL, "Enter point3", "x3 coordinate", 0, -1000, 1000, 2);
+            double p3y = QInputDialog::getDouble(NULL, "Enter point3", "y3 coordinate", 0, -1000, 1000, 2);
+            points = drawTriangle(p1x,p1y,p2x,p2y,p3x,p3y);
         }
         else if (index == 10) {//rhombus
-            points = drawRhombus();
+            double sidelength = QInputDialog::getDouble(NULL, "Enter side length", "side length", 0, -1000, 1000, 2);
+            points = drawRhombus(sidelength);
         }
         else if (index == 11) {//star
-            points = drawStar();
+            double radius = QInputDialog::getDouble(NULL, "Enter radius", "radius", 0, -1000, 1000, 2);
+            points = drawStar(radius);
         }
         // Create polyline to connect those points using lines
         //vtkpolyline: type of VTK cell that represents a single polyline in 3D space.
@@ -334,7 +427,6 @@ namespace {
         //mapper takes data that is going to be rendered
         mapper->SetInputData(polydata);
         //actor is used to change properties
-        vtkNew<vtkActor> Actor;
         Actor->GetProperty()->SetColor(1.0, 0.0, 0.0);
         Actor->SetVisibility(true);
         Actor->SetMapper(mapper);
@@ -342,14 +434,37 @@ namespace {
         window->Render();
     }
 
-    void deleteSelectedShape(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
+    /*void deleteSelectedShape(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
         int numActors = renderer->GetActors()->GetNumberOfItems();
         if (numActors > 0) {
             vtkProp* lastActor = renderer->GetActors()->GetLastProp();
             renderer->RemoveActor(lastActor);
             window->Render();
         }
-    }
+    }*/
+
+	/*void deleteSelectedShape(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer, int shapeIdentifier) {
+		int numActors = renderer->GetActors()->GetNumberOfItems();
+		if (numActors > 0) {
+			for (int i = 0; i < numActors; i++) {
+				vtkProp* actor = renderer->GetActors()->GetItemAsObject(i);
+				vtkDataObject* dataObject = actor->GetMapper()->GetInputDataObject(0, 0);
+				vtkFieldData* fieldData = dataObject->GetFieldData();
+				if (fieldData->HasArray("Identifier")) {
+					int identifier = fieldData->GetArray("Identifier")->GetTuple1(0);
+					if (identifier == shapeIdentifier) {
+						renderer->RemoveActor(actor);
+						window->Render();
+						return;
+					}
+				}
+			}
+			std::cout << "Shape with identifier " << shapeIdentifier << " not found." << std::endl;
+		}
+		else {
+			std::cout << "No shapes to delete." << std::endl;
+		}
+	}*/
 
     void applyTranslation(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
         double x = QInputDialog::getDouble(NULL, "Enter x translation", "x translation", 0, -1000, 1000, 3);
@@ -453,6 +568,101 @@ namespace {
                 window->Render();
             }
         }
+
+    void openColorWindow(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
+        QColorDialog colorDialog;
+        if (colorDialog.exec() == QDialog::Accepted) {
+            QColor color = colorDialog.currentColor();
+            int red = color.red();
+            int green = color.green();
+            int blue = color.blue();
+            vtkActor* lastActor = vtkActor::SafeDownCast(renderer->GetActors()->GetLastProp());
+            if (lastActor) {
+                lastActor->GetProperty()->SetColor(red / 255.0, green / 255.0, blue / 255.0);
+                window->Render();
+            }
+        }
+    }
+
+    void changeLineWidth(int value, vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
+        vtkActor* lastActor = vtkActor::SafeDownCast(renderer->GetActors()->GetLastProp());
+        lastActor->GetProperty()->SetLineWidth(value);
+        window->Render();
+    }
+
+	void writeInFile(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
+		QString fileName = QFileDialog::getSaveFileName(nullptr, "Save File", ".", "Text Files (*.txt)");
+		QFile file(fileName);
+        vtkSmartPointer<vtkActorCollection> actors = renderer->GetActors();
+        //vtkCollectionSimpleIterator* it = actors->NewIterator();
+        vtkSmartPointer<vtkCollectionIterator> it;
+        for (it = actors->NewIterator(); !it->IsDoneWithTraversal(); it->GoToNextItem())
+        {
+            vtkSmartPointer<vtkActor> actor = vtkActor::SafeDownCast(it->GetCurrentObject());
+            if (actor)
+            {
+                // Get actor properties
+                double* color = actor->GetProperty()->GetColor();
+                // Do something with actor properties
+                if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                    QTextStream out(&file);
+                    vtkSmartPointer<vtkPolyData> polyData = vtkPolyData::SafeDownCast(actor->GetMapper()->GetInput());
+                    vtkSmartPointer<vtkPoints> points = polyData->GetPoints();
+
+                    for (vtkIdType i = 0; i < points->GetNumberOfPoints(); i++)
+                    {
+                        out << points->GetPoint(i) << " ";
+                        // do something with the point coordinates of each actor
+                    }
+                    out << color[0] << " "
+                        << color[1] << " "
+                        << color[2] << Qt::endl;
+                    out << actor->GetProperty()->GetLineWidth() << Qt::endl;
+                    file.close();
+                }
+            }
+        }
+        
+	}
+
+	//void readInputFile(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
+	//	QString fileObject = QFileDialog::getOpenFileName(nullptr, "Open File", ".", "Text Files (*.txt)");
+	//	if (fileObject.isEmpty()) {
+	//		return;  // Dialog was cancelled
+	//	}
+	//	QFile file(fileObject);
+	//	if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+	//		return;
+	//	else {
+	//		QTextStream in(&file);
+	//		double x1, y1, x2, y2;
+	//		if (!in.atEnd()) {
+	//			QStringList linepoint1 = in.readLine().split(" ");
+	//			linesource->SetPoint1(linepoint1[0].toDouble(), linepoint1[1].toDouble(), 0.0);
+	//		}
+	//		if (!in.atEnd()) {
+	//			QStringList linepoint2 = in.readLine().split(" ");
+	//			linesource->SetPoint2(linepoint2[0].toDouble(), linepoint2[1].toDouble(), 0.0);
+	//		}
+	//		if (!in.atEnd()) {
+	//			QStringList rgb = in.readLine().split(" ");
+	//			double rgbarr[3];
+	//			rgbarr[0] = rgb.at(0).toDouble();
+	//			rgbarr[1] = rgb.at(1).toDouble();
+	//			rgbarr[2] = rgb.at(2).toDouble();
+	//			lineActor->GetProperty()->SetColor(rgbarr);
+	//		}
+	//		if (!in.atEnd()) {
+	//			QStringList lineWidthString = in.readLine().split(" ");;
+	//			double lineWidth = lineWidthString.at(0).toDouble();
+	//			lineActor->GetProperty()->SetLineWidth(lineWidth);
+	//		}
+	//		window->Render();
+	//		updateTextCoordinates(linesource, TextActor, lineActor);
+	//		file.close(); //close the file object.
+	//	}
+	//}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -511,6 +721,26 @@ int main(int argc, char** argv)
     QPushButton shearButton("Apply shearing");
     dockLayout->addWidget(&shearButton, 1, Qt::AlignTop);
 
+    QPushButton colorButton;
+    colorButton.setText("Select color");
+    dockLayout->addWidget(&colorButton, 0, Qt::AlignTop);
+
+    QSlider slider;
+    slider.setMinimum(0);
+    slider.setMaximum(10);
+    slider.setValue(0);
+    slider.setOrientation(Qt::Horizontal);
+    dockLayout->addWidget(&slider, 1, Qt::AlignTop);
+    QPushButton readFile;
+    readFile.setText("Read Input File");
+    dockLayout->addWidget(&readFile, 0, Qt::AlignTop);
+
+    QPushButton writeFile;
+    writeFile.setText("Write Input File");
+    dockLayout->addWidget(&writeFile, 1, Qt::AlignTop);
+
+
+
      //render area
     QPointer<QVTKOpenGLNativeWidget> vtkRenderWidget = new QVTKOpenGLNativeWidget();
     mainWindow.setCentralWidget(vtkRenderWidget);
@@ -521,13 +751,19 @@ int main(int argc, char** argv)
     vtkRenderWidget->setRenderWindow(window);
 
     /*---------------------renderers---------------------*/
+    // Create a callback for deleting actors
+
+    // Attach the callback to the picker
+    vtkNew<vtkPropPicker> picker;
+    window->GetInteractor()->SetPicker(picker);
+    vtkNew<DeleteActorCallback> callback;
+    picker->AddObserver(vtkCommand::EndPickEvent, callback);
 
     vtkNew<vtkRenderer> renderer;
     window->AddRenderer(renderer);
     
     vtkNew<vtkPointPicker> pointPicker;
     window->SetInteractor(vtkRenderWidget->interactor());
-    window->GetInteractor()->SetPicker(pointPicker);
 
     vtkNew<ScalingInteractorStyle> style;
 
@@ -542,9 +778,9 @@ int main(int argc, char** argv)
           });
 
        // connect button to slot
-       QObject::connect(&deleteButton, &QPushButton::clicked, [&]() {
-           ::deleteSelectedShape(window, renderer);
-           });
+       //QObject::connect(&deleteButton, &QPushButton::clicked, [&]() {
+       //    ::deleteSelectedShape(window, renderer);
+       //    });
        QObject::connect(&translateButton, &QPushButton::clicked, [&]() {
            ::applyTranslation(window, renderer);
            });
@@ -557,6 +793,18 @@ int main(int argc, char** argv)
        QObject::connect(&shearButton, &QPushButton::clicked, [&]() {
            ::applyShear(window, renderer);
            });
+       QObject::connect(&colorButton, &QPushButton::released,
+           [&]() { ::openColorWindow(window, renderer); });
+       QObject::connect(&slider, &QSlider::valueChanged, [&](int value) {
+           // Do something with the value
+           ::changeLineWidth(value,window, renderer);
+           });
+       /*QObject::connect(&readFile, &QPushButton::released,
+           [&]() { ::readInputFile(window, renderer); });*/
+
+       QObject::connect(&writeFile, &QPushButton::released,
+           [&]() { ::writeInFile(window, renderer); });
+
     window->Render();
     mainWindow.show();
 
