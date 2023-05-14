@@ -309,12 +309,6 @@ namespace {
     void selectShape(int index, vtkGenericOpenGLRenderWindow* window,vtkRenderer* renderer) {
         vtkNew<vtkPoints> points;
         vtkNew<vtkActor> Actor;
-        /*int numActors = renderer->GetActors()->GetNumberOfItems();
-        if (numActors > 0) {
-            vtkProp* lastActor = renderer->GetActors()->GetLastProp();
-            renderer->RemoveActor(lastActor);
-        }*/
-
         if (index == 1) {//line
             double x1 = QInputDialog::getDouble(NULL, "Enter first coordinates", "x1 coordinate", 0, -1000, 1000, 2);
             double y1 = QInputDialog::getDouble(NULL, "Enter first coordinates", "y1 coordinate", 0, -1000, 1000, 2);
@@ -366,6 +360,8 @@ namespace {
         }        
         else if (index == 5) {//circle
             double radius = QInputDialog::getDouble(NULL, "Enter radius ", "radius", 0, -1000, 1000, 2);
+            Actor->SetObjectName("circle");
+            nameArray->InsertNextValue("circle");
             points = drawCircle(radius);
         }        
         else if (index == 6) {//arc
@@ -374,6 +370,8 @@ namespace {
 			double radius = QInputDialog::getDouble(NULL, "Enter radius", "radius", 0, -1000, 1000, 2);
             double startangle = QInputDialog::getDouble(NULL, "Enter start angle", "start angle", 0, -1000, 1000, 2);
 			double endAngle = QInputDialog::getDouble(NULL, "Enter end angle", "end angle", 0, -1000, 1000, 2);
+            Actor->SetObjectName("arc");
+            nameArray->InsertNextValue("arc");
             points = drawArc(centerX, centerY, radius, startangle, endAngle );
         }        
         else if (index == 7) {//ellipse
@@ -381,12 +379,15 @@ namespace {
 			double centerY = QInputDialog::getDouble(NULL, "Enter point2", "point2", 0, -1000, 1000, 2);
 			double radiusA = QInputDialog::getDouble(NULL, "Enter radiusI", "radiusI", 0, -1000, 1000, 2);
 			double radiusB = QInputDialog::getDouble(NULL, "Enter radiusII", "radiusII", 0, -1000, 1000, 2);
-
+            Actor->SetObjectName("ellipse");
+            nameArray->InsertNextValue("ellipse");
             points = drawEllipse(centerX, centerY, radiusA, radiusB );
         }
         else if (index == 8) {//rectangle
             double length = QInputDialog::getDouble(NULL, "Enter length", "x1 coordinate", 0, -1000, 1000, 2);
             double width = QInputDialog::getDouble(NULL, "Enter width", "y1 coordinate", 0, -1000, 1000, 2);
+            Actor->SetObjectName("rectangle");
+            nameArray->InsertNextValue("rectangle");
             points = drawRectangle(length,width);
         }
         else if (index == 9) {//triangle
@@ -396,14 +397,20 @@ namespace {
             double p2y = QInputDialog::getDouble(NULL, "Enter point2", "y2 coordinate", 0, -1000, 1000, 2);
             double p3x = QInputDialog::getDouble(NULL, "Enter point3", "x3 coordinate", 0, -1000, 1000, 2);
             double p3y = QInputDialog::getDouble(NULL, "Enter point3", "y3 coordinate", 0, -1000, 1000, 2);
+            Actor->SetObjectName("triangle");
+            nameArray->InsertNextValue("triangle");
             points = drawTriangle(p1x,p1y,p2x,p2y,p3x,p3y);
         }
         else if (index == 10) {//rhombus
             double sidelength = QInputDialog::getDouble(NULL, "Enter side length", "side length", 0, -1000, 1000, 2);
+            Actor->SetObjectName("rhombus");
+            nameArray->InsertNextValue("rhombus");
             points = drawRhombus(sidelength);
         }
         else if (index == 11) {//star
             double radius = QInputDialog::getDouble(NULL, "Enter radius", "radius", 0, -1000, 1000, 2);
+            Actor->SetObjectName("star");
+            nameArray->InsertNextValue("star");
             points = drawStar(radius);
         }
         // Create polyline to connect those points using lines
@@ -596,8 +603,10 @@ namespace {
         vtkSmartPointer<vtkActorCollection> actors = renderer->GetActors();
         //vtkCollectionSimpleIterator* it = actors->NewIterator();
         vtkSmartPointer<vtkCollectionIterator> it;
+        int counter = 0;
         for (it = actors->NewIterator(); !it->IsDoneWithTraversal(); it->GoToNextItem())
         {
+
             vtkSmartPointer<vtkActor> actor = vtkActor::SafeDownCast(it->GetCurrentObject());
             if (actor)
             {
@@ -608,21 +617,23 @@ namespace {
                     QTextStream out(&file);
                     vtkSmartPointer<vtkPolyData> polyData = vtkPolyData::SafeDownCast(actor->GetMapper()->GetInput());
                     vtkSmartPointer<vtkPoints> points = polyData->GetPoints();
-
+                    out << nameArray->GetValue(counter) << " ";
                     for (vtkIdType i = 0; i < points->GetNumberOfPoints(); i++)
                     {
-                        out << points->GetPoint(i) << " ";
+                        double p[3];
+                        points->GetPoint(i, p);
+                        out << p[0] << " " << p[1] << " " << p[2] << " ";
                         // do something with the point coordinates of each actor
                     }
                     out << color[0] << " "
                         << color[1] << " "
-                        << color[2] << Qt::endl;
-                    out << actor->GetProperty()->GetLineWidth() << Qt::endl;
-                    file.close();
+                        << color[2] << " "
+                        << actor->GetProperty()->GetLineWidth() << Qt::endl;
                 }
+                counter++;
             }
         }
-        
+        file.close();
 	}
 
 	//void readInputFile(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
