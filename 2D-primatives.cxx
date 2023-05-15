@@ -22,6 +22,7 @@
 #include <vtkPropPicker.h>
 #include <vtkCollectionIterator.h>
 #include <vtkStringArray.h>
+#include <vtkLineSource.h>
 
 #include <QApplication>
 #include <QDockWidget>
@@ -415,24 +416,27 @@ namespace {
         }
         // Create polyline to connect those points using lines
         //vtkpolyline: type of VTK cell that represents a single polyline in 3D space.
-        vtkNew<vtkPolyLine> polyline;
+        //vtkNew<vtkPolyLine> polyline;
+        vtkNew<vtkLineSource> linesource;
         //ses the number of point IDs in the vtkIdList associated with the polyline object
-        polyline->GetPointIds()->SetNumberOfIds(points->GetNumberOfPoints());
+        //polyline->GetPointIds()->SetNumberOfIds(points->GetNumberOfPoints());
         // iterate through each point in the points object and set the corresponding point ID in the vtkIdList associated with the polyline object. 
-        for (vtkIdType i = 0; i < points->GetNumberOfPoints(); ++i) {
+       /* for (vtkIdType i = 0; i < points->GetNumberOfPoints(); ++i) {
             polyline->GetPointIds()->SetId(i, i);
-        }
+        }*/
         //vtkPolyData:VTK data object that represents a dataset consisting of points, cells, and associated data attributes.
-        vtkNew<vtkPolyData> polydata;
+        //vtkNew<vtkPolyData> polydata;
         //set the points object as the points of the polydata object
-        polydata->SetPoints(points);
+        //polydata->SetPoints(points);
+        linesource->SetPoints(points);
         //allocate memory for the cells in the polydata object. 
-        polydata->Allocate();
+        //polydata->Allocate();
         //The polyline(parameter1) will be drawn using lines connecting the points(parameter2) defined by the point IDs in the vtkIdList.
-        polydata->InsertNextCell(polyline->GetCellType(), polyline->GetPointIds());
+        //polydata->InsertNextCell(polyline->GetCellType(), polyline->GetPointIds());
         vtkNew<vtkPolyDataMapper> mapper;
         //mapper takes data that is going to be rendered
-        mapper->SetInputData(polydata);
+        //mapper->SetInputData(polydata);
+         mapper->SetInputConnection(linesource->GetOutputPort());
         //actor is used to change properties
         Actor->GetProperty()->SetColor(1.0, 0.0, 0.0);
         Actor->SetVisibility(true);
