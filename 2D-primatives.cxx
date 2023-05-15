@@ -23,6 +23,7 @@
 #include <vtkCollectionIterator.h>
 #include <vtkStringArray.h>
 #include <vtkLineSource.h>
+#include <vtkMatrix3x3.h>
 
 #include <QApplication>
 #include <QDockWidget>
@@ -37,6 +38,8 @@
 #include <QComboBox>
 #include <QStandardItem>
 #include <QColorDialog>
+#include <QMessageBox>
+
 
 #include <cmath>
 #include <cstdlib>
@@ -480,54 +483,27 @@ namespace {
     void applyTranslation(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
         double x = QInputDialog::getDouble(NULL, "Enter x translation", "x translation", 0, -1000, 1000, 3);
         double y = QInputDialog::getDouble(NULL, "Enter y translation", "y translation", 0, -1000, 1000, 3);
+        double z = QInputDialog::getDouble(NULL, "Enter z translation", "z translation", 0, -1000, 1000, 3);
         vtkProp* prop = renderer->GetActors()->GetLastProp();
         vtkActor* actor = renderer->GetActors()->GetLastActor();
         vtkMapper* mapper = actor->GetMapper();
         vtkPolyData* data = vtkPolyData::SafeDownCast(mapper->GetInput());
         vtkPoints* points = data->GetPoints();
         vtkIdType numPoints = points->GetNumberOfPoints();
-        //translate each point Q = P + d
+        vtkMatrix4x4* translation = vtkMatrix4x4::New();
+        translation->Identity();
+        translation->SetElement(0, 3, x);
+        translation->SetElement(1, 3, y);
+        translation->SetElement(2, 3, z);
+        //translate each point Q = pq
         //Q -> new place
-        //P-> old place
-        //d-> translation
-        for (vtkIdType i = 0; i < numPoints; i++) {
-            double* pt = points->GetPoint(i);
-            pt[0] += x;
-            pt[1] += y;
-            points->SetPoint(i, pt);
-        }
-        points->Modified();
-        window->Render();
-    }
-
-    void applyRotation(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
-        double angle = QInputDialog::getDouble(NULL, "Enter angle in degrees", "Rotation angle", 0, -360, 360, 3);
-        double angleRad = vtkMath::RadiansFromDegrees(angle);
-
-        vtkProp* prop = renderer->GetActors()->GetLastProp();
-        vtkActor* actor = renderer->GetActors()->GetLastActor();
-        vtkMapper* mapper = actor->GetMapper();
-        vtkPolyData* data = vtkPolyData::SafeDownCast(mapper->GetInput());
-        vtkPoints* points = data->GetPoints();
-        vtkIdType numPoints = points->GetNumberOfPoints();
-        //create an empty matrix
-        vtkMatrix4x4* rotation = vtkMatrix4x4::New();
-        //identity matrix initially
-        rotation->Identity();
-        //Qx= Pxcos(θ) − Pysin(θ)
-        //Qy = Pxsin(θ) + Pycos(θ)
-        //Q -> new place
-        //P-> old place
-        //set element sets the matrix,its parameters are row,column,value
-        rotation->SetElement(0, 0, cos(angleRad));
-        rotation->SetElement(0, 1, -sin(angleRad));
-        rotation->SetElement(1, 0, sin(angleRad));
-        rotation->SetElement(1, 1, cos(angleRad));
+        //p-> old place
+        //q-> translation
         for (vtkIdType i = 0; i < numPoints; i++) {
             double* pt = points->GetPoint(i);
             double p[4] = { pt[0], pt[1], pt[2], 1 };
-            double q[4] = { 0, 0, 0, 0 };//store result of array multiplication in q
-            rotation->MultiplyPoint(p, q);//multiply matrix of rotation by the matrix of points p and store it in q
+            double q[4] = { 0, 0, 0, 0 };
+            translation->MultiplyPoint(p, q);
             pt[0] = q[0];
             pt[1] = q[1];
             pt[2] = q[2];
@@ -535,10 +511,163 @@ namespace {
         }
         points->Modified();
         window->Render();
+        translation->Delete();
     }
 
+    void applyRotation(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
+        vtkStdString lastElement = nameArray->GetValue(nameArray->GetSize() - 1);
+        vtkProp* prop = renderer->GetActors()->GetLastProp();
+        vtkActor* actor = renderer->GetActors()->GetLastActor();
+        vtkMapper* mapper = actor->GetMapper();
+        vtkPolyData* data = vtkPolyData::SafeDownCast(mapper->GetInput());
+        vtkPoints* points = data->GetPoints();
+        vtkIdType numPoints = points->GetNumberOfPoints();
+        double angle = QInputDialog::getDouble(NULL, "Enter angle in degrees", "Rotation angle", 0, -360, 360, 3);
+        double angleInRadians = vtkMath::RadiansFromDegrees(angle);
+        if (lastElement != "sphere" || lastElement != "ellipsoid", lastElement != "cube") {
+            for (vtkIdType i = 0; i < numPoints; i++) {
+                double* pt = points->GetPoint(i);
+                double x = pt[0];
+                double y = pt[1];
+                //Qx= Pxcos(θ) − Pysin(θ)
+                //Qy = Pxsin(θ) + Pycos(θ)
+                //Q -> new place
+                //P-> old place
+                double transformedX = x*cos(angleInRadians) - y*sin(angleInRadians);
+                double transformedY = x * sin(angleInRadians) + y*cos(angleInRadians);
+
+                pt[0] = transformedX;
+                pt[1] = transformedY;
+
+                points->SetPoint(i, pt);
+            }
+        }
+        else {
+            vtkMatrix4x4* rotationMatrix2D = vtkMatrix4x4::New();
+            QMessageBox msgBox;
+            msgBox.setText("choose direction of rotation in 3D");
+            QAbstractButton* xAxisButton = msgBox.addButton("xaxis", QMessageBox::ButtonRole::AcceptRole);
+            QAbstractButton* yAxisButton = msgBox.addButton("yaxis", QMessageBox::ButtonRole::AcceptRole);
+            QAbstractButton* zAxisButton = msgBox.addButton("zaxis", QMessageBox::ButtonRole::AcceptRole);
+            msgBox.exec();
+            vtkMatrix4x4* rotationMatrix3D = vtkMatrix4x4::New();
+            rotationMatrix3D->Identity();
+            if (msgBox.clickedButton() == xAxisButton) {
+                rotationMatrix3D->SetElement(1, 1, cos(angleInRadians));
+                rotationMatrix3D->SetElement(2, 1, sin(angleInRadians));
+                rotationMatrix3D->SetElement(1, 2, -sin(angleInRadians));
+                rotationMatrix3D->SetElement(2, 2, cos(angleInRadians));
+            }
+            else if (msgBox.clickedButton() == yAxisButton) {
+                rotationMatrix3D->SetElement(0, 0, cos(angleInRadians));
+                rotationMatrix3D->SetElement(0, 2, sin(angleInRadians));
+                rotationMatrix3D->SetElement(2, 0, -sin(angleInRadians));
+                rotationMatrix3D->SetElement(2, 2, cos(angleInRadians));
+            }
+            else {
+                rotationMatrix3D->SetElement(0, 0, cos(angleInRadians));
+                rotationMatrix3D->SetElement(0, 1, -sin(angleInRadians));
+                rotationMatrix3D->SetElement(1, 0, sin(angleInRadians));
+                rotationMatrix3D->SetElement(1, 1, cos(angleInRadians));
+            }
+            for (vtkIdType i = 0; i < numPoints; i++) {
+                double* pt = points->GetPoint(i);
+                double p[4] = { pt[0], pt[1], pt[2],1 };
+                double q[4] = { 0, 0, 0, 0 };//store result of array multiplication in q
+                rotationMatrix3D->MultiplyPoint(p, q);//multiply matrix of rotation by the matrix of points p and store it in q
+                pt[0] = q[0];
+                pt[1] = q[1];
+                pt[2] = q[2];
+                points->SetPoint(i, pt);
+            }
+        }
+        points->Modified();
+        window->Render();
+    }
+
+    void applyShear(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
+        vtkStdString lastElement = nameArray->GetValue(nameArray->GetSize() - 1);
+        vtkProp* prop = renderer->GetActors()->GetLastProp();
+        vtkActor* actor = renderer->GetActors()->GetLastActor();
+        vtkMapper* mapper = actor->GetMapper();
+        vtkPolyData* data = vtkPolyData::SafeDownCast(mapper->GetInput());
+        vtkPoints* points = data->GetPoints();
+        vtkIdType numPoints = points->GetNumberOfPoints();
+        if(lastElement !="sphere" || lastElement != "ellipsoid", lastElement != "cube"){
+            QMessageBox msgBox;
+            msgBox.setText("choose direction of shearing in 2D");
+            QAbstractButton* xAxisButton = msgBox.addButton("xaxis", QMessageBox::ButtonRole::AcceptRole);
+            QAbstractButton* yAxisButton = msgBox.addButton("yaxis", QMessageBox::ButtonRole::AcceptRole);
+            msgBox.exec();  
+            vtkMatrix3x3* shearMatrix2D = vtkMatrix3x3::New();
+            shearMatrix2D->Identity();
+            double shearFactorX, shearFactorY;
+            if (msgBox.clickedButton() == xAxisButton) {
+                shearFactorX = QInputDialog::getDouble(NULL, "Enter shear factor X", "shear factor X", 0, -1000, 1000, 3);
+            }
+            if (msgBox.clickedButton() == yAxisButton) {
+                shearFactorY = QInputDialog::getDouble(NULL, "Enter shear factor  Y", "shear factor Y", 0, -1000, 1000, 3);
+            }
+            for (vtkIdType i = 0; i < numPoints; i++) {
+                double* pt = points->GetPoint(i);
+                double x = pt[0];
+                double y = pt[1];
+
+                double transformedX = x + shearFactorX * y;
+                double transformedY = shearFactorY * x + y;
+
+                pt[0] = transformedX;
+                pt[1] = transformedY;
+
+                points->SetPoint(i, pt);
+            }
+        }
+        else{
+            QMessageBox msgBox;
+            msgBox.setText("choose direction of shearing in 3D");
+            QAbstractButton* xAxisButton = msgBox.addButton("xaxis", QMessageBox::ButtonRole::AcceptRole);
+            QAbstractButton* yAxisButton = msgBox.addButton("yaxis", QMessageBox::ButtonRole::AcceptRole);
+            QAbstractButton* zAxisButton = msgBox.addButton("zaxis", QMessageBox::ButtonRole::AcceptRole);
+            msgBox.exec();
+            vtkMatrix4x4* shearMatrix3D = vtkMatrix4x4::New();
+            shearMatrix3D->Identity();
+            if (msgBox.clickedButton() == xAxisButton) {
+                double shearFactorY = QInputDialog::getDouble(NULL, "Enter shear factor Y", "shear factor Y", 0, -1000, 1000, 3);
+                double shearFactorZ = QInputDialog::getDouble(NULL, "Enter shear factor Z", "shear factor Z", 0, -1000, 1000, 3);
+                shearMatrix3D->SetElement(0, 1, shearFactorY);
+                shearMatrix3D->SetElement(0, 2, shearFactorZ);
+            }
+            else if (msgBox.clickedButton() == yAxisButton) {
+                double shearFactorX = QInputDialog::getDouble(NULL, "Enter shear factor X", "shear factor X", 0, -1000, 1000, 3);
+                double shearFactorZ = QInputDialog::getDouble(NULL, "Enter shear factor Z", "shear factor Z", 0, -1000, 1000, 3);
+                shearMatrix3D->SetElement(1, 0, shearFactorX);
+                shearMatrix3D->SetElement(1, 2, shearFactorZ);
+            }
+            else {
+                double shearFactorX = QInputDialog::getDouble(NULL, "Enter shear factor X", "shear factor X", 0, -1000, 1000, 3);
+                double shearFactorY = QInputDialog::getDouble(NULL, "Enter shear factor Y", "shear factor Y", 0, -1000, 1000, 3);
+                shearMatrix3D->SetElement(2, 0, shearFactorX);
+                shearMatrix3D->SetElement(2, 1, shearFactorY);
+            }
+            for (vtkIdType i = 0; i < numPoints; i++) {
+                double* pt = points->GetPoint(i);
+                double p[4] = { pt[0], pt[1], pt[2],1};
+                double q[4] = { 0, 0, 0, 0 };//store result of array multiplication in q
+                shearMatrix3D->MultiplyPoint(p, q);//multiply matrix of rotation by the matrix of points p and store it in q
+                pt[0] = q[0];
+                pt[1] = q[1];
+                pt[2] = q[2];
+                points->SetPoint(i, pt);
+            }
+        }
+        points->Modified();
+        window->Render();
+        }
+
     void applyScaling(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
-        double scalingfactor = QInputDialog::getDouble(NULL, "enter scaling factor", "scaling factor", 0, -1000, 1000, 3);
+        double x = QInputDialog::getDouble(NULL, "enter x scaling factor", "x scaling factor", 0, -1000, 1000, 3);
+        double y = QInputDialog::getDouble(NULL, "enter y scaling factor", "y scaling factor", 0, -1000, 1000, 3);
+        double z = QInputDialog::getDouble(NULL, "enter z scaling factor", "z scaling factor", 0, -1000, 1000, 3);
 
         vtkProp* prop = renderer->GetActors()->GetLastProp();
         vtkActor* actor = renderer->GetActors()->GetLastActor();
@@ -547,39 +676,25 @@ namespace {
         vtkPoints* points = data->GetPoints();
         vtkIdType numPoints = points->GetNumberOfPoints();
         //(Qx, Qy) = (SxPx, SyPy), multiply each old point p by the scaling factor
+        vtkMatrix4x4* scaling = vtkMatrix4x4::New();
+        scaling->Identity();
+        scaling->SetElement(0, 0, x);
+        scaling->SetElement(1, 1, y);
+        scaling->SetElement(2, 2, z);
         for (vtkIdType i = 0; i < numPoints; i++) {
             double* pt = points->GetPoint(i);
-            pt[0] *= scalingfactor;
-            pt[1] *= scalingfactor;            
+            double p[4] = { pt[0], pt[1], pt[2], 1 };
+            double q[4] = { 0, 0, 0, 0 };
+            scaling->MultiplyPoint(p, q);
+            pt[0] = q[0];
+            pt[1] = q[1];
+            pt[2] = q[2];
             points->SetPoint(i, pt);
         }
         points->Modified();
         window->Render();
+        scaling->Delete();
     }
-
-    void applyShear(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
-            double shearFactorX = QInputDialog::getDouble(NULL, "Enter shear factor X", "shear factor X", 0, -1000, 1000, 3);
-            double shearFactorY = QInputDialog::getDouble(NULL, "Enter shear factor Y", "shear factor Y", 0, -1000, 1000, 3);
-
-            vtkProp* prop = renderer->GetActors()->GetLastProp();
-            vtkActor* actor = dynamic_cast<vtkActor*>(prop);
-
-            vtkNew<vtkTransform> transform;
-            double shearElements[16] = { 1.0, shearFactorX, 0.0, 0.0,
-                                        shearFactorY, 1.0, 0.0, 0.0,
-                                       0.0, 0.0, 1.0, 0.0,
-                                       0.0, 0.0, 0.0, 1.0 };
-            // Set the shearing matrix in the transform
-            transform->SetMatrix(shearElements);
-            if (actor != nullptr) {
-                // Set the actor's user transform to be the shearing transform.
-                actor->SetUserMatrix(transform->GetMatrix());
-                actor->Modified();
-                // Render the scene to see the shearing effect applied.
-                window->Render();
-            }
-        }
-
     void openColorWindow(vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
         QColorDialog colorDialog;
         if (colorDialog.exec() == QDialog::Accepted) {
@@ -597,6 +712,7 @@ namespace {
 
     void changeLineWidth(int value, vtkGenericOpenGLRenderWindow* window, vtkRenderer* renderer) {
         vtkActor* lastActor = vtkActor::SafeDownCast(renderer->GetActors()->GetLastProp());
+
         lastActor->GetProperty()->SetLineWidth(value);
         window->Render();
     }
@@ -713,7 +829,7 @@ int main(int argc, char** argv)
     shapesComboBox.addItem(QApplication::tr("Circle"));
     shapesComboBox.addItem(QApplication::tr("Arc"));
     shapesComboBox.addItem(QApplication::tr("Ellipse"));
-    shapesComboBox.addItem(QApplication::tr("Rectangle"));
+    shapesComboBox.addItem(QApplication::tr("Rectangle/Square"));
     shapesComboBox.addItem(QApplication::tr("Triangle"));
     shapesComboBox.addItem(QApplication::tr("Rhombus"));
     shapesComboBox.addItem(QApplication::tr("Star"));
