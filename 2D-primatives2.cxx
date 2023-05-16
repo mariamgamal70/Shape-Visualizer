@@ -1124,6 +1124,7 @@ int main(int argc, char** argv)
     shapesComboBox.addItem(QApplication::tr("Star"));
     shapesComboBox.addItem(QApplication::tr("Sphere"));
     shapesComboBox.addItem(QApplication::tr("Cube"));
+    shapesComboBox.addItem(QApplication::tr("ellipsoid"));
     shapesComboBox.setItemData(0, QVariant(0), Qt::UserRole - 1);
 
     dockLayout->addWidget(&shapesComboBox, 1, Qt::AlignTop);
