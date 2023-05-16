@@ -366,9 +366,9 @@ namespace {
                 }
             }
 
-            return ellipsoidPoints;
+           
         }
-
+       return ellipsoidPoints;
     }
     /*vtkNew<vtkPoints> drawcube(double x ,double y , double z ,double length) {*/
     vtkNew<vtkPoints> drawcube(double length) {
