@@ -1117,7 +1117,7 @@ int main(int argc, char** argv)
 
     dockLayout->addWidget(&shapesComboBox, 1, Qt::AlignTop);
 
-    QPushButton deleteButton("Delete Selected Shape");
+    QPushButton deleteButton("Delete Shape");
     dockLayout->addWidget(&deleteButton, 1, Qt::AlignTop);
 
     QPushButton translateButton("Apply Translate");
@@ -1177,10 +1177,6 @@ int main(int argc, char** argv)
     window->SetInteractor(vtkRenderWidget->interactor());
 
     vtkNew<ScalingInteractorStyle> style;
-
-    //vtkNew<customMouseInteractorStyle> style;
-    //style->setLineSource(linesource);
-    //style->setVTKActor(lineactor);
 
     window->GetInteractor()->SetInteractorStyle(style);
 
