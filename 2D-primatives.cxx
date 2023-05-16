@@ -57,30 +57,30 @@ struct Shapes {
 vector<Shapes> Shapesdata;
 
 namespace {
-    class DeleteActorCallback : public vtkCommand
-    {
-    public:
-        static DeleteActorCallback* New()
-        {
-            return new DeleteActorCallback;
-        }
+    /* class DeleteActorCallback : public vtkCommand
+     {
+     public:
+       static DeleteActorCallback* New()
+         {
+             return new DeleteActorCallback;
+         }
 
-        virtual void Execute(vtkObject* caller, unsigned long eventId, void* callData)
-        {
-            cout << "hello";
-            // Get the picker and the renderer
-            vtkPropPicker* picker = vtkPropPicker::SafeDownCast(caller);
-            vtkRenderer* renderer = picker->GetRenderer();
+         virtual void Execute(vtkObject* caller, unsigned long eventId, void* callData)
+         {
+             cout << "hello";
+             // Get the picker and the renderer
+             vtkPropPicker* picker = vtkPropPicker::SafeDownCast(caller);
+             vtkRenderer* renderer = picker->GetRenderer();
 
-            // Get the actor that was picked and remove it from the renderer
-            vtkActor* actor = picker->GetActor();
-            renderer->RemoveActor(actor);
+             // Get the actor that was picked and remove it from the renderer
+             vtkActor* actor = picker->GetActor();
+             renderer->RemoveActor(actor);
 
-            // Update the render window
-            vtkRenderWindow* renderWindow = renderer->GetRenderWindow();
-            renderWindow->Render();
-        }
-    };
+             // Update the render window
+             vtkRenderWindow* renderWindow = renderer->GetRenderWindow();
+             renderWindow->Render();
+         }
+     };*/
 
     class ScalingInteractorStyle : public vtkInteractorStyleTrackballActor
     {
@@ -366,17 +366,17 @@ namespace {
                 }
             }
 
-           
+
         }
-       return ellipsoidPoints;
+        return ellipsoidPoints;
     }
-    /*vtkNew<vtkPoints> drawcube(double x ,double y , double z ,double length) {*/
-    vtkNew<vtkPoints> drawcube(double length) {
+    vtkNew<vtkPoints> drawcube(double x, double y, double z, double length) {
+
         vtkNew<vtkPoints> cubepoints;
         //first face
-        double x = 0.0;
-        double y = 0.0;
-        double z = 0.0;
+       // double x = 0.0;
+        //double y = 0.0;
+        //double z = 0.0;
         cubepoints->InsertNextPoint(x, y, z);
         cubepoints->InsertNextPoint(x + length, y, z);
         cubepoints->InsertNextPoint(x + length, y + length, z);
@@ -548,14 +548,17 @@ namespace {
             Shapesdata.push_back(sphere);
         }
         else if (index == 13) {//cube
-            /*double px = QInputDialog::getDouble(NULL, "Enter your x origin ", "x coordinate", 0, -1000, 1000, 2);
+            double px = QInputDialog::getDouble(NULL, "Enter your x origin ", "x coordinate", 0, -1000, 1000, 2);
             double py = QInputDialog::getDouble(NULL, "Enter your y origin ", "y coordinate", 0, -1000, 1000, 2);
-            double pz = QInputDialog::getDouble(NULL, "Enter your z origin", "z coordinate", 0, -1000, 1000, 2);*/
+            double pz = QInputDialog::getDouble(NULL, "Enter your z origin", "z coordinate", 0, -1000, 1000, 2);
             double cube_length = QInputDialog::getDouble(NULL, "Enter the length ", "length ", 0, -1000, 1000, 2);
-            //points = drawcube(px, py, pz, cube_length);
-            points = drawcube(cube_length);
+            points = drawcube(px, py, pz, cube_length);
+            // points = drawcube(cube_length);
             Shapes cube;
             cube.name = "cube";
+            cube.x1 = px;
+            cube.y1 = py;
+            cube.z1 = pz;
             cube.length = cube_length;
             Shapesdata.push_back(cube);
         }
@@ -748,7 +751,7 @@ namespace {
             msgBox.exec();
             vtkMatrix3x3* shearMatrix2D = vtkMatrix3x3::New();
             shearMatrix2D->Identity();
-            double shearFactorX, shearFactorY;
+            double shearFactorX, shearFactorY = 0;
             if (msgBox.clickedButton() == xAxisButton) {
                 shearFactorX = QInputDialog::getDouble(NULL, "Enter shear factor X", "shear factor X", 0, -1000, 1000, 3);
             }
@@ -1026,8 +1029,11 @@ namespace {
                     points = drawStar(radius);
                 }
                 else if (elements[0] == "cube") {
+                    double x1 = elements[1].toDouble(&ok);
+                    double y1 = elements[2].toDouble(&ok);
+                    double z1 = elements[3].toDouble(&ok);
                     double length = elements[19].toDouble(&ok);
-                    points = drawcube(length);
+                    points = drawcube(x1, y1, z1, length);
                 }
                 else if (elements[0] == "sphere") {
                     double radius = elements[21].toDouble(&ok);
@@ -1052,7 +1058,7 @@ namespace {
                     double radius1 = elements[21].toDouble(&ok);
                     double radius2 = elements[22].toDouble(&ok);
                     double radius3 = elements[23].toDouble(&ok);
-                    points = drawEllipsoid(radius1,radius2, radius3);
+                    points = drawEllipsoid(radius1, radius2, radius3);
                 }
                 vtkNew<vtkLineSource> linesource;
                 linesource->SetPoints(points);
@@ -1167,8 +1173,8 @@ int main(int argc, char** argv)
     // Attach the callback to the picker
     vtkNew<vtkPropPicker> picker;
     window->GetInteractor()->SetPicker(picker);
-    vtkNew<DeleteActorCallback> callback;
-    picker->AddObserver(vtkCommand::EndPickEvent, callback);
+    // vtkNew<DeleteActorCallback> callback;
+   //  picker->AddObserver(vtkCommand::EndPickEvent, callback);
 
     vtkNew<vtkRenderer> renderer;
     window->AddRenderer(renderer);
